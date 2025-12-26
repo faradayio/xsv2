@@ -1,5 +1,5 @@
-use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -7,20 +7,20 @@ use std::path::Path;
 use csv;
 use regex::Regex;
 
-use CliResult;
-use config::{Config, Delimiter};
-use select::SelectColumns;
-use util::{self, FilenameTemplate};
+use crate::config::{CompressionFormat, Config, Delimiter};
+use crate::select::SelectColumns;
+use crate::util::{self, FilenameTemplate};
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Partitions the given CSV data into chunks based on the value of a column
 
 The files are written to the output directory with filenames based on the
 values in the partition column and the `--filename` flag.
 
 Usage:
-    xsv partition [options] <column> <outdir> [<input>]
-    xsv partition --help
+    xsv2 partition [options] <column> <outdir> [<input>]
+    xsv2 partition --help
 
 partition options:
     --filename <filename>  A filename template to use when constructing
@@ -40,6 +40,9 @@ Common options:
                            appear in all chunks as the header row.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Clone, Deserialize)]
@@ -52,6 +55,8 @@ struct Args {
     flag_drop: bool,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -71,15 +76,12 @@ impl Args {
         Config::new(&self.arg_input)
             .delimiter(self.flag_delimiter)
             .no_headers(self.flag_no_headers)
+            .flexible(self.flag_flexible)
             .select(self.arg_column.clone())
     }
 
     /// Get the column to use as a key.
-    fn key_column(
-        &self,
-        rconfig: &Config,
-        headers: &csv::ByteRecord,
-    ) -> CliResult<usize> {
+    fn key_column(&self, rconfig: &Config, headers: &csv::ByteRecord) -> CliResult<usize> {
         let select_cols = rconfig.selection(headers)?;
         if select_cols.len() == 1 {
             Ok(select_cols[0])
@@ -94,39 +96,52 @@ impl Args {
         let mut rdr = rconfig.reader()?;
         let headers = rdr.byte_headers()?.clone();
         let key_col = self.key_column(&rconfig, &headers)?;
-        let mut gen = WriterGenerator::new(self.flag_filename.clone());
+        let mut gen = WriterGenerator::new(
+            self.flag_filename.clone(),
+            self.flag_compress,
+            self.flag_flexible,
+        );
 
-        let mut writers: HashMap<Vec<u8>, BoxedWriter> =
-            HashMap::new();
+        let mut writers: HashMap<Vec<u8>, BoxedWriter> = HashMap::new();
         let mut row = csv::ByteRecord::new();
         while rdr.read_byte_record(&mut row)? {
             // Decide what file to put this in.
-            let column = &row[key_col];
+            let column = match row.get(key_col) {
+                Some(col) => col,
+                None => b"",
+            };
             let key = match self.flag_prefix_length {
                 // We exceed --prefix-length, so ignore the extra bytes.
                 Some(len) if len < column.len() => &column[0..len],
-                _ => &column[..],
+                _ => column,
             };
             let mut entry = writers.entry(key.to_vec());
-            let wtr = match entry {
-                Entry::Occupied(ref mut occupied) => occupied.get_mut(),
-                Entry::Vacant(vacant) => {
-                    // We have a new key, so make a new writer.
-                    let mut wtr = gen.writer(&*self.arg_outdir, key)?;
-                    if !rconfig.no_headers {
-                        if self.flag_drop {
-                            wtr.write_record(headers.iter().enumerate()
-                                .filter_map(|(i, e)| if i != key_col { Some(e) } else { None }))?;
-                        } else {
-                            wtr.write_record(&headers)?;
+            let wtr =
+                match entry {
+                    Entry::Occupied(ref mut occupied) => occupied.get_mut(),
+                    Entry::Vacant(vacant) => {
+                        // We have a new key, so make a new writer.
+                        let mut wtr = gen.writer(&*self.arg_outdir, key)?;
+                        if !rconfig.no_headers {
+                            if self.flag_drop {
+                                wtr.write_record(headers.iter().enumerate().filter_map(
+                                    |(i, e)| if i != key_col { Some(e) } else { None },
+                                ))?;
+                            } else {
+                                wtr.write_record(&headers)?;
+                            }
                         }
+                        vacant.insert(wtr)
                     }
-                    vacant.insert(wtr)
-                }
-            };
+                };
             if self.flag_drop {
-                wtr.write_record(row.iter().enumerate()
-                    .filter_map(|(i, e)| if i != key_col { Some(e) } else { None }))?;
+                wtr.write_record(row.iter().enumerate().filter_map(|(i, e)| {
+                    if i != key_col {
+                        Some(e)
+                    } else {
+                        None
+                    }
+                }))?;
             } else {
                 wtr.write_byte_record(&row)?;
             }
@@ -135,7 +150,7 @@ impl Args {
     }
 }
 
-type BoxedWriter = csv::Writer<Box<io::Write+'static>>;
+type BoxedWriter = csv::Writer<Box<dyn io::Write + 'static>>;
 
 /// Generates unique filenames based on CSV values.
 struct WriterGenerator {
@@ -143,24 +158,38 @@ struct WriterGenerator {
     counter: usize,
     used: HashSet<String>,
     non_word_char: Regex,
+    compress: Option<CompressionFormat>,
+    flexible: bool,
 }
 
 impl WriterGenerator {
-    fn new(template: FilenameTemplate) -> WriterGenerator {
+    fn new(
+        template: FilenameTemplate,
+        compress: Option<CompressionFormat>,
+        flexible: bool,
+    ) -> WriterGenerator {
         WriterGenerator {
-            template: template,
+            template,
             counter: 1,
             used: HashSet::new(),
             non_word_char: Regex::new(r"\W").unwrap(),
+            compress,
+            flexible,
         }
     }
 
     /// Create a CSV writer for `key`.  Does not add headers.
     fn writer<P>(&mut self, path: P, key: &[u8]) -> io::Result<BoxedWriter>
-        where P: AsRef<Path>
+    where
+        P: AsRef<Path>,
     {
         let unique_value = self.unique_value(key);
-        self.template.writer(path.as_ref(), &unique_value)
+        self.template.writer_with_options(
+            path.as_ref(),
+            &unique_value,
+            self.compress,
+            self.flexible,
+        )
     }
 
     /// Generate a unique value for `key`, suitable for use in a
@@ -169,13 +198,12 @@ impl WriterGenerator {
     fn unique_value(&mut self, key: &[u8]) -> String {
         // Sanitize our key.
         let utf8 = String::from_utf8_lossy(key);
-        let safe = self.non_word_char.replace_all(&*utf8, "").into_owned();
-        let base =
-            if safe.is_empty() {
-                "empty".to_owned()
-            } else {
-                safe
-            };
+        let safe = self.non_word_char.replace_all(&utf8, "").into_owned();
+        let base = if safe.is_empty() {
+            "empty".to_owned()
+        } else {
+            safe
+        };
 
         // Now check for collisions.
         if !self.used.contains(&base) {
@@ -192,7 +220,7 @@ impl WriterGenerator {
                 });
                 if !self.used.contains(&candidate) {
                     self.used.insert(candidate.clone());
-                    return candidate
+                    return candidate;
                 }
             }
         }

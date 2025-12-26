@@ -2,15 +2,16 @@ use std::io;
 
 use byteorder::{ByteOrder, LittleEndian};
 use csv;
-use rand::{self, Rng, SeedableRng};
 use rand::rngs::StdRng;
+use rand::seq::SliceRandom;
+use rand::{self, Rng, SeedableRng};
 
-use CliResult;
-use config::{Config, Delimiter};
-use index::Indexed;
-use util;
+use crate::config::{CompressionFormat, Config, Delimiter};
+use crate::index::Indexed;
+use crate::util;
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Randomly samples CSV data uniformly using memory proportional to the size of
 the sample.
 
@@ -26,8 +27,8 @@ limit the number of records visited, use the 'xsv slice' command to pipe into
 'xsv sample'.
 
 Usage:
-    xsv sample [options] <sample-size> [<input>]
-    xsv sample --help
+    xsv2 sample [options] <sample-size> [<input>]
+    xsv2 sample --help
 
 sample options:
     --seed <number>        RNG seed.
@@ -41,6 +42,9 @@ Common options:
                            in the output.)
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -50,17 +54,22 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_seed: Option<usize>,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
-        .no_headers(args.flag_no_headers);
+        .no_headers(args.flag_no_headers)
+        .flexible(args.flag_flexible);
     let sample_size = args.arg_sample_size;
 
-    let mut wtr = Config::new(&args.flag_output).writer()?;
+    let mut wtr = Config::new(&args.flag_output)
+        .compress(args.flag_compress)
+        .writer()?;
     let sampled = match rconfig.indexed()? {
         Some(mut idx) => {
             if do_random_access(sample_size, idx.count()) {
@@ -88,11 +97,13 @@ fn sample_random_access<R, I>(
     idx: &mut Indexed<R, I>,
     sample_size: u64,
 ) -> CliResult<Vec<csv::ByteRecord>>
-where R: io::Read + io::Seek, I: io::Read + io::Seek
+where
+    R: io::Read + io::Seek,
+    I: io::Read + io::Seek,
 {
     let mut all_indices = (0..idx.count()).collect::<Vec<_>>();
-    let mut rng = ::rand::thread_rng();
-    rng.shuffle(&mut *all_indices);
+    let mut rng = ::rand::rng();
+    all_indices.shuffle(&mut rng);
 
     let mut sampled = Vec::with_capacity(sample_size as usize);
     for i in all_indices.into_iter().take(sample_size as usize) {
@@ -105,7 +116,7 @@ where R: io::Read + io::Seek, I: io::Read + io::Seek
 fn sample_reservoir<R: io::Read>(
     rdr: &mut csv::Reader<R>,
     sample_size: u64,
-    seed: Option<usize>
+    seed: Option<usize>,
 ) -> CliResult<Vec<csv::ByteRecord>> {
     // The following algorithm has been adapted from:
     // https://en.wikipedia.org/wiki/Reservoir_sampling
@@ -117,9 +128,7 @@ fn sample_reservoir<R: io::Read>(
 
     // Seeding rng
     let mut rng: StdRng = match seed {
-        None => {
-            StdRng::from_rng(rand::thread_rng()).unwrap()
-        }
+        None => StdRng::from_rng(&mut rand::rng()),
         Some(seed) => {
             let mut buf = [0u8; 32];
             LittleEndian::write_u64(&mut buf, seed as u64);
@@ -129,7 +138,7 @@ fn sample_reservoir<R: io::Read>(
 
     // Now do the sampling.
     for (i, row) in records {
-        let random = rng.gen_range(0, i+1);
+        let random = rng.random_range(0..i + 1);
         if random < sample_size as usize {
             reservoir[random] = row?;
         }

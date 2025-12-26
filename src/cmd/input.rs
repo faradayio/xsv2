@@ -1,19 +1,19 @@
 use csv;
 
-use CliResult;
-use config::{Config, Delimiter};
-use util;
+use crate::config::{CompressionFormat, Config, Delimiter};
+use crate::util;
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Read CSV data with special quoting rules.
 
-Generally, all xsv commands support basic options like specifying the delimiter
+Generally, all xsv2 commands support basic options like specifying the delimiter
 used in CSV data. This does not cover all possible types of CSV data. For
 example, some CSV files don't use '\"' for quotes or use different escaping
 styles.
 
 Usage:
-    xsv input [options] [<input>]
+    xsv2 input [options] [<input>]
 
 input options:
     --quote <arg>          The quote character to use. [default: \"]
@@ -26,6 +26,9 @@ Common options:
     -o, --output <file>    Write output to <file> instead of stdout.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -33,9 +36,11 @@ struct Args {
     arg_input: Option<String>,
     flag_output: Option<String>,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_quote: Delimiter,
     flag_escape: Option<Delimiter>,
     flag_no_quoting: bool,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -43,8 +48,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
         .no_headers(true)
+        .flexible(args.flag_flexible)
         .quote(args.flag_quote.as_byte());
-    let wconfig = Config::new(&args.flag_output);
+    let wconfig = Config::new(&args.flag_output).compress(args.flag_compress);
 
     if let Some(escape) = args.flag_escape {
         rconfig = rconfig.escape(Some(escape.as_byte())).double_quote(false);

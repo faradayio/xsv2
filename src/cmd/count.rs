@@ -1,17 +1,17 @@
 use csv;
 
-use CliResult;
-use config::{Delimiter, Config};
-use util;
+use crate::config::{Config, Delimiter};
+use crate::util;
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Prints a count of the number of records in the CSV data.
 
 Note that the count will not include the header row (unless --no-headers is
 given).
 
 Usage:
-    xsv count [options] [<input>]
+    xsv2 count [options] [<input>]
 
 Common options:
     -h, --help             Display this message
@@ -19,6 +19,7 @@ Common options:
                            the count.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
 ";
 
 #[derive(Deserialize)]
@@ -26,26 +27,28 @@ struct Args {
     arg_input: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
     let conf = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
-        .no_headers(args.flag_no_headers);
+        .no_headers(args.flag_no_headers)
+        .flexible(args.flag_flexible);
 
-    let count =
-        match conf.indexed()? {
-            Some(idx) => idx.count(),
-            None => {
-                let mut rdr = conf.reader()?;
-                let mut count = 0u64;
-                let mut record = csv::ByteRecord::new();
-                while rdr.read_byte_record(&mut record)? {
-                    count += 1;
-                }
-                count
+    let count = match conf.indexed()? {
+        Some(idx) => idx.count(),
+        None => {
+            let mut rdr = conf.reader()?;
+            let mut count = 0u64;
+            let mut record = csv::ByteRecord::new();
+            while rdr.read_byte_record(&mut record)? {
+                count += 1;
             }
-        };
-    Ok(println!("{}", count))
+            count
+        }
+    };
+    println!("{}", count);
+    Ok(())
 }

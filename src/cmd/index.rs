@@ -4,11 +4,11 @@ use std::path::{Path, PathBuf};
 
 use csv_index::RandomAccessSimple;
 
-use CliResult;
-use config::{Config, Delimiter};
-use util;
+use crate::config::{Config, Delimiter};
+use crate::util;
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Creates an index of the given CSV data, which can make other operations like
 slicing, splitting and gathering statistics much faster.
 
@@ -19,8 +19,8 @@ data changes after the index is made, commands that try to use it will result
 in an error (you have to regenerate the index before it can be used again).
 
 Usage:
-    xsv index [options] <input>
-    xsv index --help
+    xsv2 index [options] <input>
+    xsv2 index --help
 
 index options:
     -o, --output <file>    Write index to <file> instead of <input>.idx.
@@ -32,6 +32,7 @@ Common options:
     -h, --help             Display this message
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
 ";
 
 #[derive(Deserialize)]
@@ -39,18 +40,20 @@ struct Args {
     arg_input: String,
     flag_output: Option<String>,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
 
     let pidx = match args.flag_output {
-        None => util::idx_path(&Path::new(&args.arg_input)),
+        None => util::idx_path(Path::new(&args.arg_input)),
         Some(p) => PathBuf::from(&p),
     };
 
     let rconfig = Config::new(&Some(args.arg_input))
-                         .delimiter(args.flag_delimiter);
+        .delimiter(args.flag_delimiter)
+        .flexible(args.flag_flexible);
     let mut rdr = rconfig.reader_file()?;
     let mut wtr = io::BufWriter::new(fs::File::create(&pidx)?);
     RandomAccessSimple::create(&mut rdr, &mut wtr)?;

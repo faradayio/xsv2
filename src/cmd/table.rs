@@ -3,11 +3,11 @@ use std::borrow::Cow;
 use csv;
 use tabwriter::TabWriter;
 
-use CliResult;
-use config::{Config, Delimiter};
-use util;
+use crate::config::{Config, Delimiter};
+use crate::util;
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Outputs CSV data as a table with columns in alignment.
 
 This will not work well if the CSV data contains large fields.
@@ -17,7 +17,7 @@ Therefore, you should use the 'sample' or 'slice' command to trim down large
 CSV data before formatting it with this command.
 
 Usage:
-    xsv table [options] [<input>]
+    xsv2 table [options] [<input>]
 
 table options:
     -w, --width <arg>      The minimum width of each column.
@@ -34,6 +34,7 @@ Common options:
     -o, --output <file>    Write output to <file> instead of stdout.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
 ";
 
 #[derive(Deserialize)]
@@ -43,6 +44,7 @@ struct Args {
     flag_pad: usize,
     flag_output: Option<String>,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_condense: Option<usize>,
 }
 
@@ -50,21 +52,23 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
-        .no_headers(true);
-    let wconfig = Config::new(&args.flag_output)
-        .delimiter(Some(Delimiter(b'\t')));
+        .no_headers(true)
+        .flexible(args.flag_flexible);
+    let wconfig = Config::new(&args.flag_output).delimiter(Some(Delimiter(b'\t')));
 
     let tw = TabWriter::new(wconfig.io_writer()?)
         .minwidth(args.flag_width)
         .padding(args.flag_pad);
-    let mut wtr = wconfig.from_writer(tw);
+    let mut wtr = wconfig.build_writer(tw);
     let mut rdr = rconfig.reader()?;
 
     let mut record = csv::ByteRecord::new();
     while rdr.read_byte_record(&mut record)? {
-        wtr.write_record(record.iter().map(|f| {
-            util::condense(Cow::Borrowed(f), args.flag_condense)
-        }))?;
+        wtr.write_record(
+            record
+                .iter()
+                .map(|f| util::condense(Cow::Borrowed(f), args.flag_condense)),
+        )?;
     }
     wtr.flush()?;
     Ok(())

@@ -1,12 +1,11 @@
 use std::fs;
 
+use crate::config::{CompressionFormat, Config, Delimiter};
+use crate::index::Indexed;
+use crate::util;
+use crate::CliResult;
 
-use CliResult;
-use config::{Config, Delimiter};
-use index::Indexed;
-use util;
-
-static USAGE: &'static str = "
+static USAGE: &str = "
 Returns the rows in the range specified (starting at 0, half-open interval).
 The range does not include headers.
 
@@ -22,7 +21,7 @@ sliced. Without an index, all rows up to the first row in the slice must be
 parsed.
 
 Usage:
-    xsv slice [options] [<input>]
+    xsv2 slice [options] [<input>]
 
 slice options:
     -s, --start <arg>      The index of the record to slice from.
@@ -39,6 +38,9 @@ Common options:
                            appear in the output as the header row.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -51,6 +53,8 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -74,10 +78,7 @@ impl Args {
         Ok(wtr.flush()?)
     }
 
-    fn with_index(
-        &self,
-        mut idx: Indexed<fs::File, fs::File>,
-    ) -> CliResult<()> {
+    fn with_index(&self, mut idx: Indexed<fs::File, fs::File>) -> CliResult<()> {
         let mut wtr = self.wconfig().writer()?;
         self.rconfig().write_headers(&mut *idx, &mut wtr)?;
 
@@ -95,16 +96,21 @@ impl Args {
 
     fn range(&self) -> Result<(usize, usize), String> {
         util::range(
-            self.flag_start, self.flag_end, self.flag_len, self.flag_index)
+            self.flag_start,
+            self.flag_end,
+            self.flag_len,
+            self.flag_index,
+        )
     }
 
     fn rconfig(&self) -> Config {
         Config::new(&self.arg_input)
             .delimiter(self.flag_delimiter)
             .no_headers(self.flag_no_headers)
+            .flexible(self.flag_flexible)
     }
 
     fn wconfig(&self) -> Config {
-        Config::new(&self.flag_output)
+        Config::new(&self.flag_output).compress(self.flag_compress)
     }
 }

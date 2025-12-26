@@ -1,5 +1,5 @@
 These are some very basic and unscientific benchmarks of various commands
-provided by `xsv`. Please see below for more information.
+provided by `xsv2`. Please see below for more information.
 
 These benchmarks were run with
 [worldcitiespop_mil.csv](https://burntsushi.net/stuff/worldcitiespop_mil.csv),

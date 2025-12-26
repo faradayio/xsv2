@@ -2,11 +2,11 @@ use std::cmp;
 
 use csv;
 
-use CliResult;
-use config::{Config, Delimiter};
-use util;
+use crate::config::{CompressionFormat, Config, Delimiter};
+use crate::util;
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Transforms CSV data so that all records have the same length. The length is
 the length of the longest record in the data (not counting trailing empty fields,
 but at least 1). Records with smaller lengths are padded with empty fields.
@@ -19,7 +19,7 @@ Alternatively, if --length is set, then all records are forced to that length.
 This requires a single pass and can be done with stdin.
 
 Usage:
-    xsv fixlengths [options] [<input>]
+    xsv2 fixlengths [options] [<input>]
 
 fixlengths options:
     -l, --length <arg>     Forcefully set the length of each record. If a
@@ -31,6 +31,8 @@ Common options:
     -o, --output <file>    Write output to <file> instead of stdout.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -39,6 +41,7 @@ struct Args {
     flag_length: Option<usize>,
     flag_output: Option<String>,
     flag_delimiter: Option<Delimiter>,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -56,8 +59,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         }
         None => {
             if config.is_std() {
-                return fail!("<stdin> cannot be used in this command. \
-                              Please specify a file path.");
+                return fail!(
+                    "<stdin> cannot be used in this command. \
+                              Please specify a file path."
+                );
             }
             let mut maxlen = 0usize;
             let mut rdr = config.reader()?;
@@ -78,7 +83,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     };
 
     let mut rdr = config.reader()?;
-    let mut wtr = Config::new(&args.flag_output).writer()?;
+    let mut wtr = Config::new(&args.flag_output)
+        .compress(args.flag_compress)
+        .writer()?;
     for r in rdr.byte_records() {
         let mut r = r?;
         if length >= r.len() {

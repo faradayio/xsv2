@@ -1,12 +1,10 @@
-# `xsv` is now unmaintained
+# xsv2
 
-In lieu of `xsv`, I'd recommend either
-[qsv](https://github.com/dathere/qsv)
-or
-[xan](https://github.com/medialab/xan).
+xsv2 is an actively maintained fork of the original [xsv](https://github.com/BurntSushi/xsv) project. This fork modernizes the codebase while maintaining the simplicity and performance that made xsv great, without the extensive feature expansion seen in other projects like [qsv](https://github.com/dathere/qsv). See the [CHANGELOG](CHANGELOG.md) for details about what's new in xsv2.
 
--------------------------------------------------------------------------------
+xsv2 is sponsored by [Faraday](https://faraday.ai/), a B2C data company.
 
+---
 
 xsv is a command line program for indexing, slicing, analyzing, splitting
 and joining CSV files. Commands should be simple, fast and composable:
@@ -16,52 +14,46 @@ and joining CSV files. Commands should be simple, fast and composable:
 3. Composition should not come at the expense of performance.
 
 This README contains information on how to
-[install `xsv`](https://github.com/BurntSushi/xsv#installation), in addition to
+[install `xsv2`](https://github.com/faradayio/xsv2#installation), in addition to
 a quick tour of several commands.
-
-[![Linux build status](https://api.travis-ci.org/BurntSushi/xsv.svg)](https://travis-ci.org/BurntSushi/xsv)
-[![Windows build status](https://ci.appveyor.com/api/projects/status/github/BurntSushi/xsv?svg=true)](https://ci.appveyor.com/project/BurntSushi/xsv)
-[![](https://meritbadge.herokuapp.com/xsv)](https://crates.io/crates/xsv)
 
 Dual-licensed under MIT or the [UNLICENSE](https://unlicense.org).
 
-
 ### Available commands
 
-* **cat** - Concatenate CSV files by row or by column.
-* **count** - Count the rows in a CSV file. (Instantaneous with an index.)
-* **fixlengths** - Force a CSV file to have same-length records by either
+- **cat** - Concatenate CSV files by row or by column.
+- **count** - Count the rows in a CSV file. (Instantaneous with an index.)
+- **fixlengths** - Force a CSV file to have same-length records by either
   padding or truncating them.
-* **flatten** - A flattened view of CSV records. Useful for viewing one record
-  at a time. e.g., `xsv slice -i 5 data.csv | xsv flatten`.
-* **fmt** - Reformat CSV data with different delimiters, record terminators
+- **flatten** - A flattened view of CSV records. Useful for viewing one record
+  at a time. e.g., `xsv2 slice -i 5 data.csv | xsv2 flatten`.
+- **fmt** - Reformat CSV data with different delimiters, record terminators
   or quoting rules. (Supports ASCII delimited data.)
-* **frequency** - Build frequency tables of each column in CSV data. (Uses
+- **frequency** - Build frequency tables of each column in CSV data. (Uses
   parallelism to go faster if an index is present.)
-* **headers** - Show the headers of CSV data. Or show the intersection of all
+- **headers** - Show the headers of CSV data. Or show the intersection of all
   headers between many CSV files.
-* **index** - Create an index for a CSV file. This is very quick and provides
+- **index** - Create an index for a CSV file. This is very quick and provides
   constant time indexing into the CSV file.
-* **input** - Read CSV data with exotic quoting/escaping rules.
-* **join** - Inner, outer and cross joins. Uses a simple hash index to make it
+- **input** - Read CSV data with exotic quoting/escaping rules.
+- **join** - Inner, outer and cross joins. Uses a simple hash index to make it
   fast.
-* **partition** - Partition CSV data based on a column value.
-* **sample** - Randomly draw rows from CSV data using reservoir sampling (i.e.,
+- **partition** - Partition CSV data based on a column value.
+- **sample** - Randomly draw rows from CSV data using reservoir sampling (i.e.,
   use memory proportional to the size of the sample).
-* **reverse** - Reverse order of rows in CSV data.
-* **search** - Run a regex over CSV data. Applies the regex to each field
+- **reverse** - Reverse order of rows in CSV data.
+- **search** - Run a regex over CSV data. Applies the regex to each field
   individually and shows only matching rows.
-* **select** - Select or re-order columns from CSV data.
-* **slice** - Slice rows from any part of a CSV file. When an index is present,
+- **select** - Select or re-order columns from CSV data.
+- **slice** - Slice rows from any part of a CSV file. When an index is present,
   this only has to parse the rows in the slice (instead of all rows leading up
   to the start of the slice).
-* **sort** - Sort CSV data.
-* **split** - Split one CSV file into many CSV files of N chunks.
-* **stats** - Show basic types and statistics of each column in the CSV file.
+- **sort** - Sort CSV data.
+- **split** - Split one CSV file into many CSV files of N chunks.
+- **stats** - Show basic types and statistics of each column in the CSV file.
   (i.e., mean, standard deviation, median, range, etc.)
-* **table** - Show aligned output of any CSV data using
+- **table** - Show aligned output of any CSV data using
   [elastic tabstops](https://github.com/BurntSushi/tabwriter).
-
 
 ### A whirlwind tour
 
@@ -72,7 +64,7 @@ city in the world. So grab the data and start examining it:
 
 ```bash
 $ curl -LO https://burntsushi.net/stuff/worldcitiespop.csv
-$ xsv headers worldcitiespop.csv
+$ xsv2 headers worldcitiespop.csv
 1   Country
 2   City
 3   AccentCity
@@ -86,7 +78,7 @@ The next thing you might want to do is get an overview of the kind of data that
 appears in each column. The `stats` command will do this for you:
 
 ```bash
-$ xsv stats worldcitiespop.csv --everything | xsv table
+$ xsv2 stats worldcitiespop.csv --everything | xsv2 table
 field       type     min            max            min_length  max_length  mean          stddev         median     mode         cardinality
 Country     Unicode  ad             zw             2           2                                                   cn           234
 City        Unicode   bab el ahmar  Þykkvibaer     1           91                                                  san jose     2351892
@@ -97,7 +89,7 @@ Latitude    Float    -54.933333     82.483333      1           12          27.18
 Longitude   Float    -179.983333    180            1           14          37.08886      63.22301       35.28      23.8         1167162
 ```
 
-The `xsv table` command takes any CSV data and formats it into aligned columns
+The `xsv2 table` command takes any CSV data and formats it into aligned columns
 using [elastic tabstops](https://github.com/BurntSushi/tabwriter). You'll
 notice that it even gets alignment right with respect to Unicode characters.
 
@@ -105,8 +97,8 @@ So, this command takes about 12 seconds to run on my machine, but we can speed
 it up by creating an index and re-running the command:
 
 ```bash
-$ xsv index worldcitiespop.csv
-$ xsv stats worldcitiespop.csv --everything | xsv table
+$ xsv2 index worldcitiespop.csv
+$ xsv2 stats worldcitiespop.csv --everything | xsv2 table
 ...
 ```
 
@@ -118,13 +110,13 @@ Notably, the same type of "statistics" command in another
 takes about 2 minutes to produce similar statistics on the same data set.
 
 Creating an index gives us more than just faster statistics gathering. It also
-makes slice operations extremely fast because *only the sliced portion* has to
+makes slice operations extremely fast because _only the sliced portion_ has to
 be parsed. For example, let's say you wanted to grab the last 10 records:
 
 ```bash
-$ xsv count worldcitiespop.csv
+$ xsv2 count worldcitiespop.csv
 3173958
-$ xsv slice worldcitiespop.csv -s 3173948 | xsv table
+$ xsv2 slice worldcitiespop.csv -s 3173948 | xsv2 table
 Country  City               AccentCity         Region  Population  Latitude     Longitude
 zw       zibalonkwe         Zibalonkwe         06                  -19.8333333  27.4666667
 zw       zibunkululu        Zibunkululu        06                  -19.6666667  27.6166667
@@ -138,7 +130,7 @@ zw       zuzumba            Zuzumba            06                  -20.0333333  
 zw       zvishavane         Zvishavane         07      79876       -20.3333333  30.0333333
 ```
 
-These commands are *instantaneous* because they run in time and memory
+These commands are _instantaneous_ because they run in time and memory
 proportional to the size of the slice (which means they will scale to
 arbitrarily large CSV data).
 
@@ -147,9 +139,9 @@ the CSV data. In this case, maybe we only care about the country, city and
 population. So let's take a look at 10 random rows:
 
 ```bash
-$ xsv select Country,AccentCity,Population worldcitiespop.csv \
-  | xsv sample 10 \
-  | xsv table
+$ xsv2 select Country,AccentCity,Population worldcitiespop.csv \
+  | xsv2 sample 10 \
+  | xsv2 table
 Country  AccentCity       Population
 cn       Guankoushang
 za       Klipdrift
@@ -167,7 +159,7 @@ Whoops! It seems some cities don't have population counts. How pervasive is
 that?
 
 ```bash
-$ xsv frequency worldcitiespop.csv --limit 5
+$ xsv2 frequency worldcitiespop.csv --limit 5
 field,value,count
 Country,cn,238985
 Country,ru,215938
@@ -206,7 +198,7 @@ Longitude,25.3,474
 Longitude,23.1,459
 ```
 
-(The `xsv frequency` command builds a frequency table for each column in the
+(The `xsv2 frequency` command builds a frequency table for each column in the
 CSV data. This one only took 5 seconds.)
 
 So it seems that most cities do not have a population count associated with
@@ -214,10 +206,10 @@ them at all. No matter—we can adjust our previous command so that it only
 shows rows with a population count:
 
 ```bash
-$ xsv search -s Population '[0-9]' worldcitiespop.csv \
-  | xsv select Country,AccentCity,Population \
-  | xsv sample 10 \
-  | xsv table
+$ xsv2 search -s Population '[0-9]' worldcitiespop.csv \
+  | xsv2 select Country,AccentCity,Population \
+  | xsv2 sample 10 \
+  | xsv2 table
 Country  AccentCity       Population
 es       Barañáin         22264
 es       Puerto Real      36946
@@ -237,10 +229,10 @@ countries these are:
 
 ```bash
 curl -LO https://gist.githubusercontent.com/anonymous/063cb470e56e64e98cf1/raw/98e2589b801f6ca3ff900b01a87fbb7452eb35c7/countrynames.csv
-$ xsv headers countrynames.csv
+$ xsv2 headers countrynames.csv
 1   Abbrev
 2   Country
-$ xsv join --no-case  Country sample.csv Abbrev countrynames.csv | xsv table
+$ xsv2 join --no-case  Country sample.csv Abbrev countrynames.csv | xsv2 table
 Country  AccentCity       Population  Abbrev  Country
 es       Barañáin         22264       ES      Spain
 es       Puerto Real      36946       ES      Spain
@@ -255,13 +247,13 @@ gb       Leatherhead      43544       GB      Great Britain | UK | England | Sco
 ```
 
 Whoops, now we have two columns called `Country` and an `Abbrev` column that we
-no longer need. This is easy to fix by re-ordering columns with the `xsv
+no longer need. This is easy to fix by re-ordering columns with the `xsv2
 select` command:
 
 ```bash
-$ xsv join --no-case  Country sample.csv Abbrev countrynames.csv \
-  | xsv select 'Country[1],AccentCity,Population' \
-  | xsv table
+$ xsv2 join --no-case  Country sample.csv Abbrev countrynames.csv \
+  | xsv2 select 'Country[1],AccentCity,Population' \
+  | xsv2 table
 Country                                                                              AccentCity       Population
 Spain                                                                                Barañáin         22264
 Spain                                                                                Puerto Real      36946
@@ -276,13 +268,13 @@ Great Britain | UK | England | Scotland | Wales | Northern Ireland | United King
 ```
 
 Perhaps we can do this with the original CSV data? Indeed we can—because
-joins in `xsv` are fast.
+joins in `xsv2` are fast.
 
 ```bash
-$ xsv join --no-case Abbrev countrynames.csv Country worldcitiespop.csv \
-  | xsv select '!Abbrev,Country[1]' \
+$ xsv2 join --no-case Abbrev countrynames.csv Country worldcitiespop.csv \
+  | xsv2 select '!Abbrev,Country[1]' \
   > worldcitiespop_countrynames.csv
-$ xsv sample 10 worldcitiespop_countrynames.csv | xsv table
+$ xsv2 sample 10 worldcitiespop_countrynames.csv | xsv2 table
 Country                      City                   AccentCity             Region  Population  Latitude    Longitude
 Sri Lanka                    miriswatte             Miriswatte             36                  7.2333333   79.9
 Romania                      livezile               Livezile               26      1985        44.512222   22.863333
@@ -301,63 +293,44 @@ the second occurrence of the `Country` column." Since we joined with
 `countrynames.csv` first, the first `Country` name (fully expanded) is now
 included in the CSV data.
 
-This `xsv join` command takes about 7 seconds on my machine. The performance
+This `xsv2 join` command takes about 7 seconds on my machine. The performance
 comes from constructing a very simple hash index of one of the CSV data files
 given. The `join` command does an inner join by default, but it also has left,
 right and full outer join support too.
 
-
 ### Installation
 
-Binaries for Windows, Linux and macOS are available [from Github](https://github.com/BurntSushi/xsv/releases/latest).
+Binaries for Windows, Linux and macOS are available [from Github](https://github.com/faradayio/xsv2/releases/latest).
 
-If you're a **macOS Homebrew** user, then you can install xsv
-from homebrew-core:
-
-```
-$ brew install xsv
-```
-
-If you're a **macOS MacPorts** user, then you can install xsv
-from the [official ports](https://www.macports.org/ports.php?by=name&substr=xsv):
-
-```
-$ sudo port install xsv
-```
-
-If you're a **Nix/NixOS** user, you can install xsv from nixpkgs:
-
-```
-$ nix-env -i xsv
-```
+If you're a **macOS Homebrew** user, then you can install xsv2 from homebrew-core.
+Note: The original xsv is in homebrew, but xsv2 may need to be installed from source
+or from our releases until we have a homebrew tap set up.
 
 Alternatively, you can compile from source by
 [installing Cargo](https://crates.io/install)
 ([Rust's](https://www.rust-lang.org/) package manager)
-and installing `xsv` using Cargo:
+and installing `xsv2` using Cargo:
 
 ```bash
-cargo install xsv
+cargo install xsv2
 ```
 
 Compiling from this repository also works similarly:
 
 ```bash
-git clone git://github.com/BurntSushi/xsv
-cd xsv
+git clone git://github.com/faradayio/xsv2
+cd xsv2
 cargo build --release
 ```
 
 Compilation will probably take a few minutes depending on your machine. The
-binary will end up in `./target/release/xsv`.
-
+binary will end up in `./target/release/xsv2`.
 
 ### Benchmarks
 
 I've compiled some [very rough
-benchmarks](https://github.com/BurntSushi/xsv/blob/master/BENCHMARKS.md) of
-various `xsv` commands.
-
+benchmarks](https://github.com/faradayio/xsv2/blob/master/BENCHMARKS.md) of
+various `xsv2` commands.
 
 ### Motivation
 
@@ -376,18 +349,17 @@ system. It was then that I realized that every single CSV tool I knew about was
 woefully inadequate. They were just too slow or didn't provide enough
 flexibility. (Another project I had comprised of a few dozen CSV files. They
 were smaller than 40GB, but they were each supposed to represent the same kind
-of data. But they all had different column and unintuitive column names. Useful
+of data. But they all had different columns and unintuitive column names. Useful
 CSV inspection tools were critical here—and they had to be reasonably fast.)
 
 The key ingredients for helping me with my task were indexing, random sampling,
 searching, slicing and selecting columns. All of these things made dealing with
 40GB of CSV data a bit more manageable (or dozens of CSV files).
 
-Getting handed a large CSV file *once* was enough to launch me on this quest.
+Getting handed a large CSV file _once_ was enough to launch me on this quest.
 From conversations I've had with others, CSV data files this large don't seem
 to be a rare event. Therefore, I believe there is room for a tool that has a
 hope of dealing with data that large.
-
 
 ### Naming collision
 

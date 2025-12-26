@@ -1,11 +1,11 @@
 use csv;
 
-use CliResult;
-use config::{Config, Delimiter};
-use select::SelectColumns;
-use util;
+use crate::config::{CompressionFormat, Config, Delimiter};
+use crate::select::SelectColumns;
+use crate::util;
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Select columns from CSV data efficiently.
 
 This command lets you manipulate the columns in CSV data. You can re-order
@@ -34,8 +34,8 @@ more indexing). Finally, column ranges can be specified.
   $ xsv select '\"Date - Opening\",\"Date - Actual Closing\"'
 
 Usage:
-    xsv select [options] [--] <selection> [<input>]
-    xsv select --help
+    xsv2 select [options] [--] <selection> [<input>]
+    xsv2 select --help
 
 Common options:
     -h, --help             Display this message
@@ -45,6 +45,9 @@ Common options:
                            sliced, etc.)
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -54,6 +57,8 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -62,20 +67,24 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
         .no_headers(args.flag_no_headers)
+        .flexible(args.flag_flexible)
         .select(args.arg_selection);
 
     let mut rdr = rconfig.reader()?;
-    let mut wtr = Config::new(&args.flag_output).writer()?;
+    let mut wtr = Config::new(&args.flag_output)
+        .compress(args.flag_compress)
+        .flexible(args.flag_flexible)
+        .writer()?;
 
     let headers = rdr.byte_headers()?.clone();
     let sel = rconfig.selection(&headers)?;
 
     if !rconfig.no_headers {
-        wtr.write_record(sel.iter().map(|&i| &headers[i]))?;
+        wtr.write_record(sel.iter().map(|&i| headers.get(i).unwrap_or(b"")))?;
     }
     let mut record = csv::ByteRecord::new();
     while rdr.read_byte_record(&mut record)? {
-        wtr.write_record(sel.iter().map(|&i| &record[i]))?;
+        wtr.write_record(sel.iter().map(|&i| record.get(i).unwrap_or(b"")))?;
     }
     wtr.flush()?;
     Ok(())

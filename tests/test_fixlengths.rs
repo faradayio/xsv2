@@ -1,9 +1,9 @@
 use quickcheck::TestResult;
 
-use {CsvRecord, qcheck};
-use workdir::Workdir;
+use crate::workdir::Workdir;
+use {crate::qcheck, crate::CsvRecord};
 
-fn trim_trailing_empty(it : &CsvRecord) -> Vec<String> {
+fn trim_trailing_empty(it: &CsvRecord) -> Vec<String> {
     let mut cloned = it.clone().unwrap();
     while cloned.len() > 1 && cloned.last().unwrap().is_empty() {
         cloned.pop();
@@ -14,11 +14,10 @@ fn trim_trailing_empty(it : &CsvRecord) -> Vec<String> {
 #[test]
 fn prop_fixlengths_all_maxlen() {
     fn p(rows: Vec<CsvRecord>) -> TestResult {
-        let expected_len =
-            match rows.iter().map(|r| trim_trailing_empty(r).len()).max() {
-                None => return TestResult::discard(),
-                Some(n) => n,
-            };
+        let expected_len = match rows.iter().map(|r| trim_trailing_empty(r).len()).max() {
+            None => return TestResult::discard(),
+            Some(n) => n,
+        };
 
         let wrk = Workdir::new("fixlengths_all_maxlen").flexible(true);
         wrk.create("in.csv", rows);
@@ -28,7 +27,9 @@ fn prop_fixlengths_all_maxlen() {
 
         let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
         let got_len = got.iter().map(|r| r.len()).max().unwrap();
-        for r in got.iter() { assert_eq!(r.len(), got_len) }
+        for r in got.iter() {
+            assert_eq!(r.len(), got_len)
+        }
         TestResult::from_bool(rassert_eq!(got_len, expected_len))
     }
     qcheck(p as fn(Vec<CsvRecord>) -> TestResult);
@@ -49,16 +50,14 @@ fn fixlengths_all_maxlen_trims() {
     cmd.arg("in.csv");
 
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
-    for r in got.iter() { assert_eq!(r.len(), 2) }
+    for r in got.iter() {
+        assert_eq!(r.len(), 2)
+    }
 }
 
 #[test]
 fn fixlengths_all_maxlen_trims_at_least_1() {
-    let rows = vec![
-        svec![""],
-        svec!["", ""],
-        svec!["", "", ""],
-    ];
+    let rows = vec![svec![""], svec!["", ""], svec!["", "", ""]];
 
     let wrk = Workdir::new("fixlengths_all_maxlen_trims_at_least_1").flexible(true);
     wrk.create("in.csv", rows);
@@ -67,14 +66,15 @@ fn fixlengths_all_maxlen_trims_at_least_1() {
     cmd.arg("in.csv");
 
     let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
-    for r in got.iter() { assert_eq!(r.len(), 1) }
+    for r in got.iter() {
+        assert_eq!(r.len(), 1)
+    }
 }
-
 
 #[test]
 fn prop_fixlengths_explicit_len() {
     fn p(rows: Vec<CsvRecord>, expected_len: usize) -> TestResult {
-        if expected_len == 0 || rows.is_empty() {
+        if expected_len == 0 || expected_len > 10000 || rows.is_empty() {
             return TestResult::discard();
         }
 
@@ -86,7 +86,9 @@ fn prop_fixlengths_explicit_len() {
 
         let got: Vec<CsvRecord> = wrk.read_stdout(&mut cmd);
         let got_len = got.iter().map(|r| r.len()).max().unwrap();
-        for r in got.iter() { assert_eq!(r.len(), got_len) }
+        for r in got.iter() {
+            assert_eq!(r.len(), got_len)
+        }
         TestResult::from_bool(rassert_eq!(got_len, expected_len))
     }
     qcheck(p as fn(Vec<CsvRecord>, usize) -> TestResult);

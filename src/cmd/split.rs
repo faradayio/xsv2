@@ -6,20 +6,20 @@ use channel;
 use csv;
 use threadpool::ThreadPool;
 
-use CliResult;
-use config::{Config, Delimiter};
-use index::Indexed;
-use util::{self, FilenameTemplate};
+use crate::config::{CompressionFormat, Config, Delimiter};
+use crate::index::Indexed;
+use crate::util::{self, FilenameTemplate};
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Splits the given CSV data into chunks.
 
 The files are written to the directory given with the name '{start}.csv',
 where {start} is the index of the first record of the chunk (starting at 0).
 
 Usage:
-    xsv split [options] <outdir> [<input>]
-    xsv split --help
+    xsv2 split [options] <outdir> [<input>]
+    xsv2 split --help
 
 split options:
     -s, --size <arg>       The number of records to write into each chunk.
@@ -44,6 +44,9 @@ Common options:
                            appear in all chunks as the header row.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Clone, Deserialize)]
@@ -55,6 +58,8 @@ struct Args {
     flag_filename: FilenameTemplate,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -91,12 +96,8 @@ impl Args {
         Ok(())
     }
 
-    fn parallel_split(
-        &self,
-        idx: Indexed<fs::File, fs::File>,
-    ) -> CliResult<()> {
-        let nchunks = util::num_of_chunks(
-            idx.count() as usize, self.flag_size);
+    fn parallel_split(&self, idx: Indexed<fs::File, fs::File>) -> CliResult<()> {
+        let nchunks = util::num_of_chunks(idx.count() as usize, self.flag_size);
         let pool = ThreadPool::new(self.njobs());
         let (tx, rx) = channel::bounded::<()>(0);
         for i in 0..nchunks {
@@ -106,9 +107,7 @@ impl Args {
                 let conf = args.rconfig();
                 let mut idx = conf.indexed().unwrap().unwrap();
                 let headers = idx.byte_headers().unwrap().clone();
-                let mut wtr = args
-                    .new_writer(&headers, i * args.flag_size)
-                    .unwrap();
+                let mut wtr = args.new_writer(&headers, i * args.flag_size).unwrap();
 
                 idx.seek((i * args.flag_size) as u64).unwrap();
                 for row in idx.byte_records().take(args.flag_size) {
@@ -120,7 +119,7 @@ impl Args {
             });
         }
         drop(tx);
-        rx.recv();
+        let _ = rx.recv();
         Ok(())
     }
 
@@ -128,11 +127,27 @@ impl Args {
         &self,
         headers: &csv::ByteRecord,
         start: usize,
-    ) -> CliResult<csv::Writer<Box<io::Write+'static>>> {
+    ) -> CliResult<csv::Writer<Box<dyn io::Write + 'static>>> {
         let dir = Path::new(&self.arg_outdir);
-        let path = dir.join(self.flag_filename.filename(&format!("{}", start)));
+        let mut path = dir.join(self.flag_filename.filename(&format!("{}", start)));
+
+        if let Some(compress_format) = self.flag_compress {
+            let extension = match compress_format {
+                CompressionFormat::Gzip => "gz",
+                CompressionFormat::Zstd => "zst",
+            };
+            let filename = path.file_name().unwrap().to_str().unwrap();
+            if !filename.ends_with(&format!(".{}", extension)) {
+                let new_filename = format!("{}.{}", filename, extension);
+                path.set_file_name(new_filename);
+            }
+        }
+
         let spath = Some(path.display().to_string());
-        let mut wtr = Config::new(&spath).writer()?;
+        let mut wtr = Config::new(&spath)
+            .compress(self.flag_compress)
+            .flexible(self.flag_flexible)
+            .writer()?;
         if !self.rconfig().no_headers {
             wtr.write_record(headers)?;
         }
@@ -143,6 +158,7 @@ impl Args {
         Config::new(&self.arg_input)
             .delimiter(self.flag_delimiter)
             .no_headers(self.flag_no_headers)
+            .flexible(self.flag_flexible)
     }
 
     fn njobs(&self) -> usize {

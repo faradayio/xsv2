@@ -1,12 +1,12 @@
 use csv;
 use regex::bytes::RegexBuilder;
 
-use CliResult;
-use config::{Config, Delimiter};
-use select::SelectColumns;
-use util;
+use crate::config::{CompressionFormat, Config, Delimiter};
+use crate::select::SelectColumns;
+use crate::util;
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Filters CSV data by whether the given regex matches a row.
 
 The regex is applied to each field in each row, and if any field matches,
@@ -15,8 +15,8 @@ with the '--select' flag (but the full row is still written to the output if
 there is a match).
 
 Usage:
-    xsv search [options] <regex> [<input>]
-    xsv search --help
+    xsv2 search [options] <regex> [<input>]
+    xsv2 search --help
 
 search options:
     -i, --ignore-case      Case insensitive search. This is equivalent to
@@ -33,6 +33,9 @@ Common options:
                            sliced, etc.)
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -43,22 +46,27 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_invert_match: bool,
     flag_ignore_case: bool,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
-    let pattern = RegexBuilder::new(&*args.arg_regex)
+    let pattern = RegexBuilder::new(&args.arg_regex)
         .case_insensitive(args.flag_ignore_case)
         .build()?;
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
         .no_headers(args.flag_no_headers)
+        .flexible(args.flag_flexible)
         .select(args.flag_select);
 
     let mut rdr = rconfig.reader()?;
-    let mut wtr = Config::new(&args.flag_output).writer()?;
+    let mut wtr = Config::new(&args.flag_output)
+        .compress(args.flag_compress)
+        .writer()?;
 
     let headers = rdr.byte_headers()?.clone();
     let sel = rconfig.selection(&headers)?;

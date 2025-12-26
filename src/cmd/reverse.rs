@@ -1,8 +1,8 @@
-use CliResult;
-use config::{Config, Delimiter};
-use util;
+use crate::config::{CompressionFormat, Config, Delimiter};
+use crate::util;
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Reverses rows of CSV data.
 
 Useful for cases when there is no column that can be used for sorting in reverse order,
@@ -11,7 +11,7 @@ or when keys are not unique and order of rows with the same key needs to be pres
 Note that this requires reading all of the CSV data into memory.
 
 Usage:
-    xsv reverse [options] [<input>]
+    xsv2 reverse [options] [<input>]
 
 Common options:
     -h, --help             Display this message
@@ -22,6 +22,9 @@ Common options:
                            appear as the header row in the output.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -30,20 +33,25 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
-        .no_headers(args.flag_no_headers);
+        .no_headers(args.flag_no_headers)
+        .flexible(args.flag_flexible);
 
     let mut rdr = rconfig.reader()?;
 
     let mut all = rdr.byte_records().collect::<Result<Vec<_>, _>>()?;
     all.reverse();
 
-    let mut wtr = Config::new(&args.flag_output).writer()?;
+    let mut wtr = Config::new(&args.flag_output)
+        .compress(args.flag_compress)
+        .writer()?;
     rconfig.write_headers(&mut rdr, &mut wtr)?;
     for r in all.into_iter() {
         wtr.write_byte_record(&r)?;

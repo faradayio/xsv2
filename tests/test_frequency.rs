@@ -1,12 +1,11 @@
 use std::borrow::ToOwned;
-use std::collections::hash_map::{HashMap, Entry};
+use std::collections::hash_map::{Entry, HashMap};
 use std::process;
 
-use csv;
 use stats::Frequencies;
 
-use {Csv, CsvData, qcheck_sized};
-use workdir::Workdir;
+use crate::workdir::Workdir;
+use {crate::qcheck_sized, crate::Csv, crate::CsvData, crate::CsvRecord};
 
 fn setup(name: &str) -> (Workdir, process::Command) {
     let rows = vec![
@@ -31,7 +30,9 @@ fn setup(name: &str) -> (Workdir, process::Command) {
 #[test]
 fn frequency_no_headers() {
     let (wrk, mut cmd) = setup("frequency_no_headers");
-    cmd.args(&["--limit", "0"]).args(&["--select", "1"]).arg("--no-headers");
+    cmd.args(&["--limit", "0"])
+        .args(&["--select", "1"])
+        .arg("--no-headers");
 
     let mut got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     got = got.into_iter().skip(1).collect();
@@ -49,7 +50,9 @@ fn frequency_no_headers() {
 #[test]
 fn frequency_no_nulls() {
     let (wrk, mut cmd) = setup("frequency_no_nulls");
-    cmd.arg("--no-nulls").args(&["--limit", "0"]).args(&["--select", "h1"]);
+    cmd.arg("--no-nulls")
+        .args(&["--limit", "0"])
+        .args(&["--select", "h1"]);
 
     let mut got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     got.sort();
@@ -97,14 +100,13 @@ fn frequency_limit() {
 #[test]
 fn frequency_asc() {
     let (wrk, mut cmd) = setup("frequency_asc");
-    cmd.args(&["--limit", "1"]).args(&["--select", "h2"]).arg("--asc");
+    cmd.args(&["--limit", "1"])
+        .args(&["--select", "h2"])
+        .arg("--asc");
 
     let mut got: Vec<Vec<String>> = wrk.read_stdout(&mut cmd);
     got.sort();
-    let expected = vec![
-        svec!["field", "value", "count"],
-        svec!["h2", "x", "1"],
-    ];
+    let expected = vec![svec!["field", "value", "count"], svec!["h2", "x", "1"]];
     assert_eq!(got, expected);
 }
 
@@ -124,7 +126,7 @@ fn frequency_select() {
     assert_eq!(got, expected);
 }
 
-// This tests that a frequency table computed by `xsv` is always the same
+// This tests that a frequency table computed by `xsv2` is always the same
 // as the frequency table computed in memory.
 #[test]
 fn prop_frequency() {
@@ -135,7 +137,6 @@ fn prop_frequency() {
     // with allocation.
     qcheck_sized(p as fn(CsvData) -> bool, 2);
 }
-
 
 // This tests that running the frequency command on a CSV file with these two
 // rows does not burst in flames:
@@ -150,14 +151,14 @@ fn prop_frequency() {
 fn frequency_bom() {
     let rows = CsvData {
         data: vec![
-            ::CsvRecord(vec!["\u{FEFF}".to_string()]),
-            ::CsvRecord(vec!["".to_string()]),
+            CsvRecord(vec!["\u{FEFF}".to_string()]),
+            CsvRecord(vec!["".to_string()]),
         ],
     };
     assert!(param_prop_frequency("prop_frequency", rows, false))
 }
 
-// This tests that a frequency table computed by `xsv` (with an index) is
+// This tests that a frequency table computed by `xsv2` (with an index) is
 // always the same as the frequency table computed in memory.
 #[test]
 fn prop_frequency_indexed() {
@@ -245,7 +246,9 @@ fn ftables_from_csv_string(data: String) -> FTables {
 }
 
 fn freq_data<T>(ftable: &Frequencies<T>) -> Vec<(&T, u64)>
-        where T: ::std::hash::Hash + Ord + Clone {
+where
+    T: ::std::hash::Hash + Ord + Clone,
+{
     let mut freqs = ftable.most_frequent();
     freqs.sort();
     freqs

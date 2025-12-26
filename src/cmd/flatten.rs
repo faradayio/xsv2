@@ -3,11 +3,11 @@ use std::io::{self, Write};
 
 use tabwriter::TabWriter;
 
-use CliResult;
-use config::{Config, Delimiter};
-use util;
+use crate::config::{Config, Delimiter};
+use crate::util;
+use crate::CliResult;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Prints flattened records such that fields are labeled separated by a new line.
 This mode is particularly useful for viewing one record at a time. Each
 record is separated by a special '#' character (on a line by itself), which
@@ -17,7 +17,7 @@ There is also a condensed view (-c or --condense) that will shorten the
 contents of each field to provide a summary view.
 
 Usage:
-    xsv flatten [options] [<input>]
+    xsv2 flatten [options] [<input>]
 
 flatten options:
     -c, --condense <arg>  Limits the length of each field to the value
@@ -36,6 +36,7 @@ Common options:
                            will be its index.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
 ";
 
 #[derive(Deserialize)]
@@ -45,13 +46,15 @@ struct Args {
     flag_separator: String,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
-        .no_headers(args.flag_no_headers);
+        .no_headers(args.flag_no_headers)
+        .flexible(args.flag_flexible);
     let mut rdr = rconfig.reader()?;
     let headers = rdr.byte_headers()?.clone();
 
@@ -67,11 +70,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
             if rconfig.no_headers {
                 write!(&mut wtr, "{}", i)?;
             } else {
-                wtr.write_all(&header)?;
+                wtr.write_all(header)?;
             }
             wtr.write_all(b"\t")?;
-            wtr.write_all(&*util::condense(
-                Cow::Borrowed(&*field), args.flag_condense))?;
+            wtr.write_all(&util::condense(Cow::Borrowed(field), args.flag_condense))?;
             wtr.write_all(b"\n")?;
         }
     }

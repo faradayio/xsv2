@@ -7,14 +7,12 @@ use std::io::{self, Read};
 use std::ops::Deref;
 use std::path::PathBuf;
 
-use csv;
-use index::Indexed;
-use serde::de::{Deserializer, Deserialize, Error};
+use crate::index::Indexed;
+use serde::de::{Deserialize, Deserializer, Error};
 
-use CliResult;
-use select::{SelectColumns, Selection};
-use util;
-
+use crate::select::{SelectColumns, Selection};
+use crate::util;
+use crate::CliResult;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Delimiter(pub u8);
@@ -30,6 +28,26 @@ impl Delimiter {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum CompressionFormat {
+    Gzip,
+    Zstd,
+}
+
+impl<'de> Deserialize<'de> for CompressionFormat {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<CompressionFormat, D::Error> {
+        let s = String::deserialize(d)?;
+        match s.as_str() {
+            "gz" => Ok(CompressionFormat::Gzip),
+            "zstd" => Ok(CompressionFormat::Zstd),
+            _ => {
+                let msg = format!("Invalid compression format '{}'. Valid values: gz, zstd", s);
+                Err(D::Error::custom(msg))
+            }
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Delimiter {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Delimiter, D::Error> {
         let c = String::deserialize(d)?;
@@ -37,16 +55,22 @@ impl<'de> Deserialize<'de> for Delimiter {
             r"\t" => Ok(Delimiter(b'\t')),
             s => {
                 if s.len() != 1 {
-                    let msg = format!("Could not convert '{}' to a single \
-                                       ASCII character.", s);
+                    let msg = format!(
+                        "Could not convert '{}' to a single \
+                                       ASCII character.",
+                        s
+                    );
                     return Err(D::Error::custom(msg));
                 }
                 let c = s.chars().next().unwrap();
                 if c.is_ascii() {
                     Ok(Delimiter(c as u8))
                 } else {
-                    let msg = format!("Could not convert '{}' \
-                                       to ASCII delimiter.", c);
+                    let msg = format!(
+                        "Could not convert '{}' \
+                                       to ASCII delimiter.",
+                        c
+                    );
                     Err(D::Error::custom(msg))
                 }
             }
@@ -68,6 +92,7 @@ pub struct Config {
     double_quote: bool,
     escape: Option<u8>,
     quoting: bool,
+    compress: Option<CompressionFormat>,
 }
 
 impl Config {
@@ -77,17 +102,30 @@ impl Config {
             Some(ref s) if s.deref() == "-" => (None, b','),
             Some(ref s) => {
                 let path = PathBuf::from(s);
-                let delim =
-                    if path.extension().map_or(false, |v| v == "tsv" || v == "tab") {
+                let delim = if path
+                    .extension()
+                    .is_some_and(|v| v == "tsv" || v == "tab" || v == "gz" || v == "zst")
+                {
+                    let path_str = path.to_str().unwrap_or("").to_lowercase();
+                    if path_str.ends_with(".tsv.gz")
+                        || path_str.ends_with(".tab.gz")
+                        || path_str.ends_with(".tsv.zst")
+                        || path_str.ends_with(".tab.zst")
+                    {
                         b'\t'
                     } else {
                         b','
-                    };
+                    }
+                } else if path.extension().is_some_and(|v| v == "tsv" || v == "tab") {
+                    b'\t'
+                } else {
+                    b','
+                };
                 (Some(path), delim)
             }
         };
         Config {
-            path: path,
+            path,
             idx_path: None,
             select_columns: None,
             delimiter: delim,
@@ -99,6 +137,7 @@ impl Config {
             double_quote: true,
             escape: None,
             quoting: true,
+            compress: None,
         }
     }
 
@@ -106,6 +145,11 @@ impl Config {
         if let Some(d) = d {
             self.delimiter = d.as_byte();
         }
+        self
+    }
+
+    pub fn compress(mut self, format: Option<CompressionFormat>) -> Config {
+        self.compress = format;
         self
     }
 
@@ -170,20 +214,20 @@ impl Config {
         self.path.is_none()
     }
 
-    pub fn selection(
-        &self,
-        first_record: &csv::ByteRecord,
-    ) -> Result<Selection, String> {
+    pub fn selection(&self, first_record: &csv::ByteRecord) -> Result<Selection, String> {
         match self.select_columns {
             None => Err("Config has no 'SelectColums'. Did you call \
-                         Config::select?".to_owned()),
+                         Config::select?"
+                .to_owned()),
             Some(ref sel) => sel.selection(first_record, !self.no_headers),
         }
     }
 
-    pub fn write_headers<R: io::Read, W: io::Write>
-                        (&self, r: &mut csv::Reader<R>, w: &mut csv::Writer<W>)
-                        -> csv::Result<()> {
+    pub fn write_headers<R: io::Read, W: io::Write>(
+        &self,
+        r: &mut csv::Reader<R>,
+        w: &mut csv::Writer<W>,
+    ) -> csv::Result<()> {
         if !self.no_headers {
             let r = r.byte_headers()?;
             if !r.is_empty() {
@@ -193,38 +237,34 @@ impl Config {
         Ok(())
     }
 
-    pub fn writer(&self)
-                 -> io::Result<csv::Writer<Box<io::Write+'static>>> {
-        Ok(self.from_writer(self.io_writer()?))
+    pub fn writer(&self) -> io::Result<csv::Writer<Box<dyn io::Write + 'static>>> {
+        Ok(self.build_writer(self.io_writer()?))
     }
 
-    pub fn reader(&self)
-                 -> io::Result<csv::Reader<Box<io::Read+'static>>> {
-        Ok(self.from_reader(self.io_reader()?))
+    pub fn reader(&self) -> io::Result<csv::Reader<Box<dyn io::Read + 'static>>> {
+        Ok(self.build_reader(self.io_reader()?))
     }
 
     pub fn reader_file(&self) -> io::Result<csv::Reader<fs::File>> {
         match self.path {
-            None => Err(io::Error::new(
-                io::ErrorKind::Other, "Cannot use <stdin> here",
-            )),
-            Some(ref p) => fs::File::open(p).map(|f| self.from_reader(f)),
+            None => Err(io::Error::other("Cannot use <stdin> here")),
+            Some(ref p) => fs::File::open(p).map(|f| self.build_reader(f)),
         }
     }
 
-    pub fn index_files(&self)
-           -> io::Result<Option<(csv::Reader<fs::File>, fs::File)>> {
+    pub fn index_files(&self) -> io::Result<Option<(csv::Reader<fs::File>, fs::File)>> {
         let (csv_file, idx_file) = match (&self.path, &self.idx_path) {
             (&None, &None) => return Ok(None),
-            (&None, &Some(_)) => return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Cannot use <stdin> with indexes",
-                // Some(format!("index file: {}", p.display()))
-            )),
-            (&Some(ref p), &None) => {
+            (&None, &Some(_)) => {
+                return Err(io::Error::other(
+                    "Cannot use <stdin> with indexes",
+                    // Some(format!("index file: {}", p.display()))
+                ));
+            }
+            (Some(p), &None) => {
                 // We generally don't want to report an error here, since we're
                 // passively trying to find an index.
-                let idx_file = match fs::File::open(&util::idx_path(p)) {
+                let idx_file = match fs::File::open(util::idx_path(p)) {
                     // TODO: Maybe we should report an error if the file exists
                     // but is not readable.
                     Err(_) => return Ok(None),
@@ -232,9 +272,7 @@ impl Config {
                 };
                 (fs::File::open(p)?, idx_file)
             }
-            (&Some(ref p), &Some(ref ip)) => {
-                (fs::File::open(p)?, fs::File::open(ip)?)
-            }
+            (Some(p), Some(ip)) => (fs::File::open(p)?, fs::File::open(ip)?),
         };
         // If the CSV data was last modified after the index file was last
         // modified, then return an error and demand the user regenerate the
@@ -242,44 +280,44 @@ impl Config {
         let data_modified = util::last_modified(&csv_file.metadata()?);
         let idx_modified = util::last_modified(&idx_file.metadata()?);
         if data_modified > idx_modified {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
+            return Err(io::Error::other(
                 "The CSV file was modified after the index file. \
                  Please re-create the index.",
             ));
         }
-        let csv_rdr = self.from_reader(csv_file);
+        let csv_rdr = self.build_reader(csv_file);
         Ok(Some((csv_rdr, idx_file)))
     }
 
-    pub fn indexed(&self)
-                  -> CliResult<Option<Indexed<fs::File, fs::File>>> {
+    pub fn indexed(&self) -> CliResult<Option<Indexed<fs::File, fs::File>>> {
         match self.index_files()? {
             None => Ok(None),
             Some((r, i)) => Ok(Some(Indexed::open(r, i)?)),
         }
     }
 
-    pub fn io_reader(&self) -> io::Result<Box<io::Read+'static>> {
+    pub fn io_reader(&self) -> io::Result<Box<dyn io::Read + 'static>> {
         Ok(match self.path {
-                None => Box::new(io::stdin()),
-                Some(ref p) => {
-                    match fs::File::open(p){
-                        Ok(x) => Box::new(x),
-                        Err(err) => {
-                            let msg = format!(
-                                "failed to open {}: {}", p.display(), err);
-                            return Err(io::Error::new(
-                                io::ErrorKind::NotFound,
-                                msg,
-                            ));
-                        }
+            None => Box::new(io::stdin()),
+            Some(ref p) => match fs::File::open(p) {
+                Ok(x) => {
+                    if p.extension().is_some_and(|ext| ext == "gz") {
+                        Box::new(flate2::read::GzDecoder::new(x))
+                    } else if p.extension().is_some_and(|ext| ext == "zst") {
+                        Box::new(zstd::stream::read::Decoder::new(x)?)
+                    } else {
+                        Box::new(x)
                     }
-                },
-            })
+                }
+                Err(err) => {
+                    let msg = format!("failed to open {}: {}", p.display(), err);
+                    return Err(io::Error::new(io::ErrorKind::NotFound, msg));
+                }
+            },
+        })
     }
 
-    pub fn from_reader<R: Read>(&self, rdr: R) -> csv::Reader<R> {
+    pub fn build_reader<R: Read>(&self, rdr: R) -> csv::Reader<R> {
         csv::ReaderBuilder::new()
             .flexible(self.flexible)
             .delimiter(self.delimiter)
@@ -290,14 +328,26 @@ impl Config {
             .from_reader(rdr)
     }
 
-    pub fn io_writer(&self) -> io::Result<Box<io::Write+'static>> {
-        Ok(match self.path {
+    pub fn io_writer(&self) -> io::Result<Box<dyn io::Write + 'static>> {
+        let writer: Box<dyn io::Write + 'static> = match self.path {
             None => Box::new(io::stdout()),
             Some(ref p) => Box::new(fs::File::create(p)?),
+        };
+
+        Ok(match self.compress {
+            Some(CompressionFormat::Gzip) => Box::new(flate2::write::GzEncoder::new(
+                writer,
+                flate2::Compression::default(),
+            )),
+            Some(CompressionFormat::Zstd) => {
+                let encoder = zstd::stream::write::Encoder::new(writer, 3)?;
+                Box::new(encoder.auto_finish())
+            }
+            None => writer,
         })
     }
 
-    pub fn from_writer<W: io::Write>(&self, wtr: W) -> csv::Writer<W> {
+    pub fn build_writer<W: io::Write>(&self, wtr: W) -> csv::Writer<W> {
         csv::WriterBuilder::new()
             .flexible(self.flexible)
             .delimiter(self.delimiter)
@@ -306,7 +356,7 @@ impl Config {
             .quote_style(self.quote_style)
             .double_quote(self.double_quote)
             .escape(self.escape.unwrap_or(b'\\'))
-            .buffer_capacity(32 * (1<<10))
+            .buffer_capacity(32 * (1 << 10))
             .from_writer(wtr)
     }
 }
