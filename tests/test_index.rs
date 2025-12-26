@@ -2,7 +2,7 @@ use std::fs;
 
 use filetime::{FileTime, set_file_times};
 
-use workdir::Workdir;
+use crate::workdir::Workdir;
 
 #[test]
 fn index_outdated() {

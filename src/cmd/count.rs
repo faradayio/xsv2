@@ -1,10 +1,10 @@
 use csv;
 
-use CliResult;
-use config::{Delimiter, Config};
-use util;
+use crate::CliResult;
+use crate::config::{Delimiter, Config};
+use crate::util;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Prints a count of the number of records in the CSV data.
 
 Note that the count will not include the header row (unless --no-headers is
@@ -44,8 +44,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 while rdr.read_byte_record(&mut record)? {
                     count += 1;
                 }
-                count
-            }
-        };
-    Ok(println!("{}", count))
+            count
+        }
+    };
+    println!("{}", count);
+    Ok(())
 }

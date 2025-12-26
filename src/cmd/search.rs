@@ -1,12 +1,12 @@
 use csv;
 use regex::bytes::RegexBuilder;
 
-use CliResult;
-use config::{Config, Delimiter};
-use select::SelectColumns;
-use util;
+use crate::CliResult;
+use crate::config::{Config, Delimiter};
+use crate::select::SelectColumns;
+use crate::util;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Filters CSV data by whether the given regex matches a row.
 
 The regex is applied to each field in each row, and if any field matches,
@@ -49,7 +49,7 @@ struct Args {
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
-    let pattern = RegexBuilder::new(&*args.arg_regex)
+    let pattern = RegexBuilder::new(&args.arg_regex)
         .case_insensitive(args.flag_ignore_case)
         .build()?;
     let rconfig = Config::new(&args.arg_input)

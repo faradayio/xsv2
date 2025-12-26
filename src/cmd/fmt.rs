@@ -1,10 +1,10 @@
 use csv;
 
-use CliResult;
-use config::{Config, Delimiter};
-use util;
+use crate::CliResult;
+use crate::config::{Config, Delimiter};
+use crate::util;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Formats CSV data with a custom delimiter or CRLF line endings.
 
 Generally, all commands in xsv output CSV data in a default format, which is

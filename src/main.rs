@@ -74,7 +74,7 @@ mod index;
 mod select;
 mod util;
 
-static USAGE: &'static str = concat!("
+static USAGE: &str = concat!("
 Usage:
     xsv <command> [<args>...]
     xsv [options]
@@ -216,7 +216,7 @@ impl fmt::Display for CliError {
             CliError::Flag(ref e) => { e.fmt(f) }
             CliError::Csv(ref e) => { e.fmt(f) }
             CliError::Io(ref e) => { e.fmt(f) }
-            CliError::Other(ref s) => { f.write_str(&**s) }
+            CliError::Other(ref s) => { f.write_str(s) }
         }
     }
 }

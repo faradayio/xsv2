@@ -2,11 +2,11 @@ use std::cmp;
 
 use csv;
 
-use CliResult;
-use config::{Config, Delimiter};
-use util;
+use crate::CliResult;
+use crate::config::{Config, Delimiter};
+use crate::util;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Transforms CSV data so that all records have the same length. The length is
 the length of the longest record in the data (not counting trailing empty fields,
 but at least 1). Records with smaller lengths are padded with empty fields.

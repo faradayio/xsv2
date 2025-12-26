@@ -1,10 +1,10 @@
 use csv;
 
-use CliResult;
-use config::{Config, Delimiter};
-use util;
+use crate::CliResult;
+use crate::config::{Config, Delimiter};
+use crate::util;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Concatenates CSV data by column or by row.
 
 When concatenating by column, the columns will be written in the same order as
@@ -62,7 +62,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
 impl Args {
     fn configs(&self) -> CliResult<Vec<Config>> {
-        util::many_configs(&*self.arg_input,
+        util::many_configs(&self.arg_input,
                            self.flag_delimiter,
                            self.flag_no_headers)
              .map_err(From::from)

@@ -1,12 +1,11 @@
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::fmt;
-use std::iter::{self, repeat};
+use std::iter::{self};
 use std::ops;
 use std::slice;
 use std::str::FromStr;
 
-use csv;
 use serde::de::{Deserializer, Deserialize, Error};
 
 #[derive(Clone)]
@@ -26,7 +25,7 @@ impl SelectColumns {
             };
         Ok(SelectColumns {
             selectors: SelectorParser::new(s).parse()?,
-            invert: invert,
+            invert,
         })
     }
 
@@ -211,11 +210,11 @@ impl SelectorParser {
     }
 
     fn is_end_of_field(&self) -> bool {
-        self.cur().map_or(true, |c| c == ',' || c == '-')
+        self.cur().is_none_or(|c| c == ',' || c == '-')
     }
 
     fn is_end_of_selector(&self) -> bool {
-        self.cur().map_or(true, |c| c == ',')
+        self.cur().is_none_or(|c| c == ',')
     }
 
     fn bump(&mut self) {
@@ -277,7 +276,7 @@ impl OneSelector {
         match *self {
             OneSelector::Start => Ok(0),
             OneSelector::End => Ok(
-                if first_record.len() == 0 {
+                if first_record.is_empty() {
                     0
                 } else {
                     first_record.len() - 1
@@ -366,7 +365,7 @@ impl Selection {
     }
 
     pub fn normal(&self) -> NormalSelection {
-        let &Selection(ref inds) = self;
+        let Selection(inds) = self;
         if inds.is_empty() {
             return NormalSelection(vec![]);
         }
@@ -375,7 +374,7 @@ impl Selection {
         normal.sort();
         normal.dedup();
         let mut set: Vec<_> =
-            repeat(false).take(normal[normal.len()-1] + 1).collect();
+            std::iter::repeat_n(false, normal[normal.len()-1] + 1).collect();
         for i in normal.into_iter() {
             set[i] = true;
         }

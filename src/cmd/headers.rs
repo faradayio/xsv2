@@ -2,11 +2,11 @@ use std::io;
 
 use tabwriter::TabWriter;
 
-use CliResult;
-use config::Delimiter;
-use util;
+use crate::CliResult;
+use crate::config::Delimiter;
+use crate::util;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Prints the fields of the first row in the CSV data.
 
 These names can be used in commands like 'select' to refer to columns in the
@@ -42,7 +42,7 @@ struct Args {
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
     let configs = util::many_configs(
-        &*args.arg_input, args.flag_delimiter, true)?;
+        &args.arg_input, args.flag_delimiter, true)?;
 
     let num_inputs = configs.len();
     let mut headers: Vec<Vec<u8>> = vec![];
@@ -57,7 +57,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         }
     }
 
-    let mut wtr: Box<io::Write> =
+    let mut wtr: Box<dyn io::Write> =
         if args.flag_just_names {
             Box::new(io::stdout())
         } else {

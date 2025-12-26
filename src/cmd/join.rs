@@ -2,19 +2,18 @@ use std::collections::hash_map::{HashMap, Entry};
 use std::fmt;
 use std::fs;
 use std::io;
-use std::iter::repeat;
 use std::str;
 
 use byteorder::{WriteBytesExt, BigEndian};
 use csv;
 
-use CliResult;
-use config::{Config, Delimiter};
-use index::Indexed;
-use select::{SelectColumns, Selection};
-use util;
+use crate::CliResult;
+use crate::config::{Config, Delimiter};
+use crate::index::Indexed;
+use crate::select::{SelectColumns, Selection};
+use crate::util;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Joins two sets of CSV data on the specified columns.
 
 The default join operation is an 'inner' join. This corresponds to the
@@ -213,7 +212,7 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
 
         // Keep track of which rows we've written from rdr2.
         let mut rdr2_written: Vec<_> =
-            repeat(false).take(validx.num_rows).collect();
+            std::iter::repeat_n(false, validx.num_rows).collect();
         for row1 in self.rdr1.byte_records() {
             let row1 = row1?;
             let key = get_row_key(&self.sel1, &row1, self.casei);
@@ -270,15 +269,15 @@ impl<R: io::Read + io::Seek, W: io::Write> IoState<R, W> {
         let len1 = self.rdr1.byte_headers()?.len();
         let len2 = self.rdr2.byte_headers()?.len();
         Ok((
-            repeat(b"").take(len1).collect(),
-            repeat(b"").take(len2).collect(),
+            std::iter::repeat_n(b"", len1).collect(),
+            std::iter::repeat_n(b"", len2).collect(),
         ))
     }
 }
 
 impl Args {
     fn new_io_state(&self)
-        -> CliResult<IoState<fs::File, Box<io::Write+'static>>> {
+        -> CliResult<IoState<fs::File, Box<dyn io::Write+'static>>> {
         let rconf1 = Config::new(&Some(self.arg_input1.clone()))
             .delimiter(self.flag_delimiter)
             .no_headers(self.flag_no_headers)
@@ -294,10 +293,10 @@ impl Args {
             &rconf1, &mut rdr1, &rconf2, &mut rdr2)?;
         Ok(IoState {
             wtr: Config::new(&self.flag_output).writer()?,
-            rdr1: rdr1,
-            sel1: sel1,
-            rdr2: rdr2,
-            sel2: sel2,
+            rdr1,
+            sel1,
+            rdr2,
+            sel2,
             no_headers: rconf1.no_headers,
             casei: self.flag_no_case,
             nulls: self.flag_nulls,
@@ -311,8 +310,8 @@ impl Args {
     ) -> CliResult<(Selection, Selection)> {
         let headers1 = rdr1.byte_headers()?;
         let headers2 = rdr2.byte_headers()?;
-        let select1 = rconf1.selection(&*headers1)?;
-        let select2 = rconf2.selection(&*headers2)?;
+        let select1 = rconf1.selection(headers1)?;
+        let select2 = rconf2.selection(headers2)?;
         if select1.len() != select2.len() {
             return fail!(format!(
                 "Column selections must have the same number of columns, \
@@ -389,7 +388,7 @@ impl<R: io::Read + io::Seek> ValueIndex<R> {
         let idx = Indexed::open(rdr, io::Cursor::new(row_idx.into_inner()))?;
         Ok(ValueIndex {
             values: val_idx,
-            idx: idx,
+            idx,
             num_rows: rowi,
         })
     }
@@ -416,7 +415,7 @@ fn get_row_key(
     row: &csv::ByteRecord,
     casei: bool,
 ) -> Vec<ByteString> {
-    sel.select(row).map(|v| transform(&v, casei)).collect()
+    sel.select(row).map(|v| transform(v, casei)).collect()
 }
 
 fn transform(bs: &[u8], casei: bool) -> ByteString {

@@ -1,10 +1,9 @@
 use std::io;
 use std::ops;
 
-use csv;
 use csv_index::RandomAccessSimple;
 
-use CliResult;
+use crate::CliResult;
 
 /// Indexed composes a CSV reader with a simple random access index.
 pub struct Indexed<R, I> {
@@ -28,7 +27,7 @@ impl<R: io::Read + io::Seek, I: io::Read + io::Seek> Indexed<R, I> {
         idx_rdr: I,
     ) -> CliResult<Indexed<R, I>> {
         Ok(Indexed {
-            csv_rdr: csv_rdr,
+            csv_rdr,
             idx: RandomAccessSimple::open(idx_rdr)?,
         })
     }
@@ -49,7 +48,7 @@ impl<R: io::Read + io::Seek, I: io::Read + io::Seek> Indexed<R, I> {
             let msg = format!(
                 "invalid record index {} (there are {} records)",
                 i, self.count());
-            return fail!(io::Error::new(io::ErrorKind::Other, msg));
+            return fail!(io::Error::other(msg));
         }
         if self.csv_rdr.has_headers() {
             i += 1;

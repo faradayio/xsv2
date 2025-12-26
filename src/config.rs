@@ -7,13 +7,12 @@ use std::io::{self, Read};
 use std::ops::Deref;
 use std::path::PathBuf;
 
-use csv;
-use index::Indexed;
+use crate::index::Indexed;
 use serde::de::{Deserializer, Deserialize, Error};
 
-use CliResult;
-use select::{SelectColumns, Selection};
-use util;
+use crate::CliResult;
+use crate::select::{SelectColumns, Selection};
+use crate::util;
 
 
 #[derive(Clone, Copy, Debug)]
@@ -78,7 +77,7 @@ impl Config {
             Some(ref s) => {
                 let path = PathBuf::from(s);
                 let delim =
-                    if path.extension().map_or(false, |v| v == "tsv" || v == "tab") {
+                    if path.extension().is_some_and(|v| v == "tsv" || v == "tab") {
                         b'\t'
                     } else {
                         b','
@@ -87,7 +86,7 @@ impl Config {
             }
         };
         Config {
-            path: path,
+            path,
             idx_path: None,
             select_columns: None,
             delimiter: delim,
@@ -194,21 +193,21 @@ impl Config {
     }
 
     pub fn writer(&self)
-                 -> io::Result<csv::Writer<Box<io::Write+'static>>> {
-        Ok(self.from_writer(self.io_writer()?))
+                 -> io::Result<csv::Writer<Box<dyn io::Write+'static>>> {
+        Ok(self.build_writer(self.io_writer()?))
     }
 
     pub fn reader(&self)
-                 -> io::Result<csv::Reader<Box<io::Read+'static>>> {
-        Ok(self.from_reader(self.io_reader()?))
+                 -> io::Result<csv::Reader<Box<dyn io::Read+'static>>> {
+        Ok(self.build_reader(self.io_reader()?))
     }
 
     pub fn reader_file(&self) -> io::Result<csv::Reader<fs::File>> {
         match self.path {
-            None => Err(io::Error::new(
-                io::ErrorKind::Other, "Cannot use <stdin> here",
+            None => Err(io::Error::other(
+                "Cannot use <stdin> here",
             )),
-            Some(ref p) => fs::File::open(p).map(|f| self.from_reader(f)),
+            Some(ref p) => fs::File::open(p).map(|f| self.build_reader(f)),
         }
     }
 
@@ -216,15 +215,14 @@ impl Config {
            -> io::Result<Option<(csv::Reader<fs::File>, fs::File)>> {
         let (csv_file, idx_file) = match (&self.path, &self.idx_path) {
             (&None, &None) => return Ok(None),
-            (&None, &Some(_)) => return Err(io::Error::new(
-                io::ErrorKind::Other,
+            (&None, &Some(_)) => return Err(io::Error::other(
                 "Cannot use <stdin> with indexes",
                 // Some(format!("index file: {}", p.display()))
             )),
-            (&Some(ref p), &None) => {
+            (Some(p), &None) => {
                 // We generally don't want to report an error here, since we're
                 // passively trying to find an index.
-                let idx_file = match fs::File::open(&util::idx_path(p)) {
+                let idx_file = match fs::File::open(util::idx_path(p)) {
                     // TODO: Maybe we should report an error if the file exists
                     // but is not readable.
                     Err(_) => return Ok(None),
@@ -232,7 +230,7 @@ impl Config {
                 };
                 (fs::File::open(p)?, idx_file)
             }
-            (&Some(ref p), &Some(ref ip)) => {
+            (Some(p), Some(ip)) => {
                 (fs::File::open(p)?, fs::File::open(ip)?)
             }
         };
@@ -242,13 +240,12 @@ impl Config {
         let data_modified = util::last_modified(&csv_file.metadata()?);
         let idx_modified = util::last_modified(&idx_file.metadata()?);
         if data_modified > idx_modified {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
+            return Err(io::Error::other(
                 "The CSV file was modified after the index file. \
                  Please re-create the index.",
             ));
         }
-        let csv_rdr = self.from_reader(csv_file);
+        let csv_rdr = self.build_reader(csv_file);
         Ok(Some((csv_rdr, idx_file)))
     }
 
@@ -260,7 +257,7 @@ impl Config {
         }
     }
 
-    pub fn io_reader(&self) -> io::Result<Box<io::Read+'static>> {
+    pub fn io_reader(&self) -> io::Result<Box<dyn io::Read+'static>> {
         Ok(match self.path {
                 None => Box::new(io::stdin()),
                 Some(ref p) => {
@@ -279,7 +276,7 @@ impl Config {
             })
     }
 
-    pub fn from_reader<R: Read>(&self, rdr: R) -> csv::Reader<R> {
+    pub fn build_reader<R: Read>(&self, rdr: R) -> csv::Reader<R> {
         csv::ReaderBuilder::new()
             .flexible(self.flexible)
             .delimiter(self.delimiter)
@@ -290,14 +287,14 @@ impl Config {
             .from_reader(rdr)
     }
 
-    pub fn io_writer(&self) -> io::Result<Box<io::Write+'static>> {
+    pub fn io_writer(&self) -> io::Result<Box<dyn io::Write+'static>> {
         Ok(match self.path {
             None => Box::new(io::stdout()),
             Some(ref p) => Box::new(fs::File::create(p)?),
         })
     }
 
-    pub fn from_writer<W: io::Write>(&self, wtr: W) -> csv::Writer<W> {
+    pub fn build_writer<W: io::Write>(&self, wtr: W) -> csv::Writer<W> {
         csv::WriterBuilder::new()
             .flexible(self.flexible)
             .delimiter(self.delimiter)

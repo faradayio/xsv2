@@ -6,13 +6,13 @@ use csv;
 use stats::{Frequencies, merge_all};
 use threadpool::ThreadPool;
 
-use CliResult;
-use config::{Config, Delimiter};
-use index::Indexed;
-use select::{SelectColumns, Selection};
-use util;
+use crate::CliResult;
+use crate::config::{Config, Delimiter};
+use crate::index::Indexed;
+use crate::select::{SelectColumns, Selection};
+use crate::util;
 
-static USAGE: &'static str = "
+static USAGE: &str = "
 Compute a frequency table on CSV data.
 
 The frequency table is formatted as CSV data:
@@ -84,7 +84,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     }?;
 
     wtr.write_record(vec!["field", "value", "count"])?;
-    let head_ftables = headers.into_iter().zip(tables.into_iter());
+    let head_ftables = headers.into_iter().zip(tables);
     for (i, (header, ftab)) in head_ftables.enumerate() {
         let mut header = header.to_vec();
         if rconfig.no_headers {
@@ -175,10 +175,8 @@ impl Args {
                 let field = trim(field.to_vec());
                 if !field.is_empty() {
                     tabs[i].add(field);
-                } else {
-                    if !self.flag_no_nulls {
-                        tabs[i].add(null.clone());
-                    }
+                } else if !self.flag_no_nulls {
+                    tabs[i].add(null.clone());
                 }
             }
         }
