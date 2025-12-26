@@ -1,6 +1,6 @@
 [package]
 name = "xsv2"
-version = "0.14.0-pre1"  #:version
+version = "0.14.0"  #:version
 edition = "2021"
 authors = [
     "Andrew Gallant <jamslam@gmail.com>",

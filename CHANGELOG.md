@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+Nothing so far!
+
+## [0.14.0] - 2025-12-26
+
 ### About xsv2
 
 xsv2 is a modernized fork of the original [xsv](https://github.com/BurntSushi/xsv) project, which was retired. This fork aims to modernize the codebase while maintaining the simplicity and performance that made xsv great, without the extensive feature expansion seen in other projects like [qsv](https://github.com/dathere/qsv).
