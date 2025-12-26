@@ -17,7 +17,11 @@ data_idx=/tmp/worldcitiespop_mil.csv.idx
 if [ ! -r "$data" ]; then
   curl -sS https://burntsushi.net/stuff/worldcitiespop_mil.csv > "$data"
 fi
-data_size=$(stat --format '%s' "$data")
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  data_size=$(stat -f '%z' "$data")
+else
+  data_size=$(stat --format '%s' "$data")
+fi
 
 function real_seconds {
   cmd=$(echo $@ "> /dev/null 2>&1")
