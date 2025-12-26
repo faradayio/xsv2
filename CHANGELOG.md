@@ -19,7 +19,7 @@ xsv2 is a modernized fork of the original [xsv](https://github.com/BurntSushi/xs
   - New `--compress` flag available on all commands that write output: `cat`, `fixlengths`, `fmt`, `frequency`, `input`, `join`, `partition`, `reverse`, `sample`, `search`, `select`, `slice`, `sort`, `split`, `stats`
   - Automatic detection of compressed input files based on file extension
 
-- **Flexible CSV Parsing**: Added `--flexible` flag to allow CSV files with varying number of fields per record
+- **Flexible CSV Parsing**: Added `--flexible` flag to allow CSV files with varying number of fields per record.
 
   - Available on all commands that read CSV input
   - Useful for working with malformed or inconsistent CSV files
@@ -30,6 +30,7 @@ xsv2 is a modernized fork of the original [xsv](https://github.com/BurntSushi/xs
 
 ### Changed
 
+- **Binary Name**: Renamed binary from `xsv` to `xsv2` (not considered a breaking change - just the executable name)
 - **Rust Edition**: Upgraded from Rust 2018 to Rust 2021
 - **Code Modernization**: Applied extensive clippy lints and code improvements
   - Modernized error handling patterns

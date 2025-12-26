@@ -1,22 +1,22 @@
 [package]
 name = "xsv"
-version = "0.13.0"  #:version
+version = "0.14.0-pre1"  #:version
 edition = "2021"
 authors = [
     "Andrew Gallant <jamslam@gmail.com>",
     "Seamus Abshere <seamus@abshere.net>",
 ]
 description = "A high performance CSV command line toolkit."
-documentation = "https://burntsushi.net/rustdoc/xsv/"
-homepage = "https://github.com/BurntSushi/xsv"
-repository = "https://github.com/BurntSushi/xsv"
+documentation = "https://docs.rs/xsv"
+homepage = "https://github.com/faradayio/xsv2"
+repository = "https://github.com/faradayio/xsv2"
 readme = "README.md"
 keywords = ["csv", "tsv", "slice", "command"]
 license = "Unlicense/MIT"
 autotests = false
 
 [[bin]]
-name = "xsv"
+name = "xsv2"
 test = false
 bench = false
 doctest = false

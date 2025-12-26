@@ -1,12 +1,10 @@
-# `xsv` is now unmaintained
+# xsv2
 
-In lieu of `xsv`, I'd recommend either
-[qsv](https://github.com/dathere/qsv)
-or
-[xan](https://github.com/medialab/xan).
+xsv2 is an actively maintained fork of the original [xsv](https://github.com/BurntSushi/xsv) project. This fork modernizes the codebase while maintaining the simplicity and performance that made xsv great, without the extensive feature expansion seen in other projects like [qsv](https://github.com/dathere/qsv). See the [CHANGELOG](CHANGELOG.md) for details about what's new in xsv2.
 
--------------------------------------------------------------------------------
+xsv2 is sponsored by [Faraday](https://faraday.ai/), a B2C data company.
 
+---
 
 xsv is a command line program for indexing, slicing, analyzing, splitting
 and joining CSV files. Commands should be simple, fast and composable:
@@ -16,52 +14,46 @@ and joining CSV files. Commands should be simple, fast and composable:
 3. Composition should not come at the expense of performance.
 
 This README contains information on how to
-[install `xsv`](https://github.com/BurntSushi/xsv#installation), in addition to
+[install `xsv`](https://github.com/faradayio/xsv2#installation), in addition to
 a quick tour of several commands.
-
-[![Linux build status](https://api.travis-ci.org/BurntSushi/xsv.svg)](https://travis-ci.org/BurntSushi/xsv)
-[![Windows build status](https://ci.appveyor.com/api/projects/status/github/BurntSushi/xsv?svg=true)](https://ci.appveyor.com/project/BurntSushi/xsv)
-[![](https://meritbadge.herokuapp.com/xsv)](https://crates.io/crates/xsv)
 
 Dual-licensed under MIT or the [UNLICENSE](https://unlicense.org).
 
-
 ### Available commands
 
-* **cat** - Concatenate CSV files by row or by column.
-* **count** - Count the rows in a CSV file. (Instantaneous with an index.)
-* **fixlengths** - Force a CSV file to have same-length records by either
+- **cat** - Concatenate CSV files by row or by column.
+- **count** - Count the rows in a CSV file. (Instantaneous with an index.)
+- **fixlengths** - Force a CSV file to have same-length records by either
   padding or truncating them.
-* **flatten** - A flattened view of CSV records. Useful for viewing one record
+- **flatten** - A flattened view of CSV records. Useful for viewing one record
   at a time. e.g., `xsv slice -i 5 data.csv | xsv flatten`.
-* **fmt** - Reformat CSV data with different delimiters, record terminators
+- **fmt** - Reformat CSV data with different delimiters, record terminators
   or quoting rules. (Supports ASCII delimited data.)
-* **frequency** - Build frequency tables of each column in CSV data. (Uses
+- **frequency** - Build frequency tables of each column in CSV data. (Uses
   parallelism to go faster if an index is present.)
-* **headers** - Show the headers of CSV data. Or show the intersection of all
+- **headers** - Show the headers of CSV data. Or show the intersection of all
   headers between many CSV files.
-* **index** - Create an index for a CSV file. This is very quick and provides
+- **index** - Create an index for a CSV file. This is very quick and provides
   constant time indexing into the CSV file.
-* **input** - Read CSV data with exotic quoting/escaping rules.
-* **join** - Inner, outer and cross joins. Uses a simple hash index to make it
+- **input** - Read CSV data with exotic quoting/escaping rules.
+- **join** - Inner, outer and cross joins. Uses a simple hash index to make it
   fast.
-* **partition** - Partition CSV data based on a column value.
-* **sample** - Randomly draw rows from CSV data using reservoir sampling (i.e.,
+- **partition** - Partition CSV data based on a column value.
+- **sample** - Randomly draw rows from CSV data using reservoir sampling (i.e.,
   use memory proportional to the size of the sample).
-* **reverse** - Reverse order of rows in CSV data.
-* **search** - Run a regex over CSV data. Applies the regex to each field
+- **reverse** - Reverse order of rows in CSV data.
+- **search** - Run a regex over CSV data. Applies the regex to each field
   individually and shows only matching rows.
-* **select** - Select or re-order columns from CSV data.
-* **slice** - Slice rows from any part of a CSV file. When an index is present,
+- **select** - Select or re-order columns from CSV data.
+- **slice** - Slice rows from any part of a CSV file. When an index is present,
   this only has to parse the rows in the slice (instead of all rows leading up
   to the start of the slice).
-* **sort** - Sort CSV data.
-* **split** - Split one CSV file into many CSV files of N chunks.
-* **stats** - Show basic types and statistics of each column in the CSV file.
+- **sort** - Sort CSV data.
+- **split** - Split one CSV file into many CSV files of N chunks.
+- **stats** - Show basic types and statistics of each column in the CSV file.
   (i.e., mean, standard deviation, median, range, etc.)
-* **table** - Show aligned output of any CSV data using
+- **table** - Show aligned output of any CSV data using
   [elastic tabstops](https://github.com/BurntSushi/tabwriter).
-
 
 ### A whirlwind tour
 
@@ -118,7 +110,7 @@ Notably, the same type of "statistics" command in another
 takes about 2 minutes to produce similar statistics on the same data set.
 
 Creating an index gives us more than just faster statistics gathering. It also
-makes slice operations extremely fast because *only the sliced portion* has to
+makes slice operations extremely fast because _only the sliced portion_ has to
 be parsed. For example, let's say you wanted to grab the last 10 records:
 
 ```bash
@@ -138,7 +130,7 @@ zw       zuzumba            Zuzumba            06                  -20.0333333  
 zw       zvishavane         Zvishavane         07      79876       -20.3333333  30.0333333
 ```
 
-These commands are *instantaneous* because they run in time and memory
+These commands are _instantaneous_ because they run in time and memory
 proportional to the size of the slice (which means they will scale to
 arbitrarily large CSV data).
 
@@ -306,10 +298,9 @@ comes from constructing a very simple hash index of one of the CSV data files
 given. The `join` command does an inner join by default, but it also has left,
 right and full outer join support too.
 
-
 ### Installation
 
-Binaries for Windows, Linux and macOS are available [from Github](https://github.com/BurntSushi/xsv/releases/latest).
+Binaries for Windows, Linux and macOS are available [from Github](https://github.com/faradayio/xsv2/releases/latest).
 
 If you're a **macOS Homebrew** user, then you can install xsv
 from homebrew-core:
@@ -343,21 +334,19 @@ cargo install xsv
 Compiling from this repository also works similarly:
 
 ```bash
-git clone git://github.com/BurntSushi/xsv
-cd xsv
+git clone git://github.com/faradayio/xsv2
+cd xsv2
 cargo build --release
 ```
 
 Compilation will probably take a few minutes depending on your machine. The
 binary will end up in `./target/release/xsv`.
 
-
 ### Benchmarks
 
 I've compiled some [very rough
-benchmarks](https://github.com/BurntSushi/xsv/blob/master/BENCHMARKS.md) of
+benchmarks](https://github.com/faradayio/xsv2/blob/master/BENCHMARKS.md) of
 various `xsv` commands.
-
 
 ### Motivation
 
@@ -383,11 +372,10 @@ The key ingredients for helping me with my task were indexing, random sampling,
 searching, slicing and selecting columns. All of these things made dealing with
 40GB of CSV data a bit more manageable (or dozens of CSV files).
 
-Getting handed a large CSV file *once* was enough to launch me on this quest.
+Getting handed a large CSV file _once_ was enough to launch me on this quest.
 From conversations I've had with others, CSV data files this large don't seem
 to be a rare event. Therefore, I believe there is room for a tool that has a
 hope of dealing with data that large.
-
 
 ### Naming collision
 
