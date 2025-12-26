@@ -8,12 +8,11 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 use crate::index::Indexed;
-use serde::de::{Deserializer, Deserialize, Error};
+use serde::de::{Deserialize, Deserializer, Error};
 
-use crate::CliResult;
 use crate::select::{SelectColumns, Selection};
 use crate::util;
-
+use crate::CliResult;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Delimiter(pub u8);
@@ -36,16 +35,22 @@ impl<'de> Deserialize<'de> for Delimiter {
             r"\t" => Ok(Delimiter(b'\t')),
             s => {
                 if s.len() != 1 {
-                    let msg = format!("Could not convert '{}' to a single \
-                                       ASCII character.", s);
+                    let msg = format!(
+                        "Could not convert '{}' to a single \
+                                       ASCII character.",
+                        s
+                    );
                     return Err(D::Error::custom(msg));
                 }
                 let c = s.chars().next().unwrap();
                 if c.is_ascii() {
                     Ok(Delimiter(c as u8))
                 } else {
-                    let msg = format!("Could not convert '{}' \
-                                       to ASCII delimiter.", c);
+                    let msg = format!(
+                        "Could not convert '{}' \
+                                       to ASCII delimiter.",
+                        c
+                    );
                     Err(D::Error::custom(msg))
                 }
             }
@@ -76,12 +81,11 @@ impl Config {
             Some(ref s) if s.deref() == "-" => (None, b','),
             Some(ref s) => {
                 let path = PathBuf::from(s);
-                let delim =
-                    if path.extension().is_some_and(|v| v == "tsv" || v == "tab") {
-                        b'\t'
-                    } else {
-                        b','
-                    };
+                let delim = if path.extension().is_some_and(|v| v == "tsv" || v == "tab") {
+                    b'\t'
+                } else {
+                    b','
+                };
                 (Some(path), delim)
             }
         };
@@ -169,20 +173,20 @@ impl Config {
         self.path.is_none()
     }
 
-    pub fn selection(
-        &self,
-        first_record: &csv::ByteRecord,
-    ) -> Result<Selection, String> {
+    pub fn selection(&self, first_record: &csv::ByteRecord) -> Result<Selection, String> {
         match self.select_columns {
             None => Err("Config has no 'SelectColums'. Did you call \
-                         Config::select?".to_owned()),
+                         Config::select?"
+                .to_owned()),
             Some(ref sel) => sel.selection(first_record, !self.no_headers),
         }
     }
 
-    pub fn write_headers<R: io::Read, W: io::Write>
-                        (&self, r: &mut csv::Reader<R>, w: &mut csv::Writer<W>)
-                        -> csv::Result<()> {
+    pub fn write_headers<R: io::Read, W: io::Write>(
+        &self,
+        r: &mut csv::Reader<R>,
+        w: &mut csv::Writer<W>,
+    ) -> csv::Result<()> {
         if !self.no_headers {
             let r = r.byte_headers()?;
             if !r.is_empty() {
@@ -192,33 +196,30 @@ impl Config {
         Ok(())
     }
 
-    pub fn writer(&self)
-                 -> io::Result<csv::Writer<Box<dyn io::Write+'static>>> {
+    pub fn writer(&self) -> io::Result<csv::Writer<Box<dyn io::Write + 'static>>> {
         Ok(self.build_writer(self.io_writer()?))
     }
 
-    pub fn reader(&self)
-                 -> io::Result<csv::Reader<Box<dyn io::Read+'static>>> {
+    pub fn reader(&self) -> io::Result<csv::Reader<Box<dyn io::Read + 'static>>> {
         Ok(self.build_reader(self.io_reader()?))
     }
 
     pub fn reader_file(&self) -> io::Result<csv::Reader<fs::File>> {
         match self.path {
-            None => Err(io::Error::other(
-                "Cannot use <stdin> here",
-            )),
+            None => Err(io::Error::other("Cannot use <stdin> here")),
             Some(ref p) => fs::File::open(p).map(|f| self.build_reader(f)),
         }
     }
 
-    pub fn index_files(&self)
-           -> io::Result<Option<(csv::Reader<fs::File>, fs::File)>> {
+    pub fn index_files(&self) -> io::Result<Option<(csv::Reader<fs::File>, fs::File)>> {
         let (csv_file, idx_file) = match (&self.path, &self.idx_path) {
             (&None, &None) => return Ok(None),
-            (&None, &Some(_)) => return Err(io::Error::other(
-                "Cannot use <stdin> with indexes",
-                // Some(format!("index file: {}", p.display()))
-            )),
+            (&None, &Some(_)) => {
+                return Err(io::Error::other(
+                    "Cannot use <stdin> with indexes",
+                    // Some(format!("index file: {}", p.display()))
+                ))
+            }
             (Some(p), &None) => {
                 // We generally don't want to report an error here, since we're
                 // passively trying to find an index.
@@ -230,9 +231,7 @@ impl Config {
                 };
                 (fs::File::open(p)?, idx_file)
             }
-            (Some(p), Some(ip)) => {
-                (fs::File::open(p)?, fs::File::open(ip)?)
-            }
+            (Some(p), Some(ip)) => (fs::File::open(p)?, fs::File::open(ip)?),
         };
         // If the CSV data was last modified after the index file was last
         // modified, then return an error and demand the user regenerate the
@@ -249,31 +248,24 @@ impl Config {
         Ok(Some((csv_rdr, idx_file)))
     }
 
-    pub fn indexed(&self)
-                  -> CliResult<Option<Indexed<fs::File, fs::File>>> {
+    pub fn indexed(&self) -> CliResult<Option<Indexed<fs::File, fs::File>>> {
         match self.index_files()? {
             None => Ok(None),
             Some((r, i)) => Ok(Some(Indexed::open(r, i)?)),
         }
     }
 
-    pub fn io_reader(&self) -> io::Result<Box<dyn io::Read+'static>> {
+    pub fn io_reader(&self) -> io::Result<Box<dyn io::Read + 'static>> {
         Ok(match self.path {
-                None => Box::new(io::stdin()),
-                Some(ref p) => {
-                    match fs::File::open(p){
-                        Ok(x) => Box::new(x),
-                        Err(err) => {
-                            let msg = format!(
-                                "failed to open {}: {}", p.display(), err);
-                            return Err(io::Error::new(
-                                io::ErrorKind::NotFound,
-                                msg,
-                            ));
-                        }
-                    }
-                },
-            })
+            None => Box::new(io::stdin()),
+            Some(ref p) => match fs::File::open(p) {
+                Ok(x) => Box::new(x),
+                Err(err) => {
+                    let msg = format!("failed to open {}: {}", p.display(), err);
+                    return Err(io::Error::new(io::ErrorKind::NotFound, msg));
+                }
+            },
+        })
     }
 
     pub fn build_reader<R: Read>(&self, rdr: R) -> csv::Reader<R> {
@@ -287,7 +279,7 @@ impl Config {
             .from_reader(rdr)
     }
 
-    pub fn io_writer(&self) -> io::Result<Box<dyn io::Write+'static>> {
+    pub fn io_writer(&self) -> io::Result<Box<dyn io::Write + 'static>> {
         Ok(match self.path {
             None => Box::new(io::stdout()),
             Some(ref p) => Box::new(fs::File::create(p)?),
@@ -303,7 +295,7 @@ impl Config {
             .quote_style(self.quote_style)
             .double_quote(self.double_quote)
             .escape(self.escape.unwrap_or(b'\\'))
-            .buffer_capacity(32 * (1<<10))
+            .buffer_capacity(32 * (1 << 10))
             .from_writer(wtr)
     }
 }

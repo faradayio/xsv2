@@ -1,12 +1,11 @@
-use {crate::CsvData, crate::qcheck};
 use crate::workdir::Workdir;
+use {crate::qcheck, crate::CsvData};
 
 /// This tests whether `xsv count` gets the right answer.
 ///
 /// It does some simple case analysis to handle whether we want to test counts
 /// in the presence of headers and/or indexes.
-fn prop_count_len(name: &str, rows: CsvData,
-                  headers: bool, idx: bool) -> bool {
+fn prop_count_len(name: &str, rows: CsvData, headers: bool, idx: bool) -> bool {
     let mut expected_count = rows.len();
     if headers && expected_count > 0 {
         expected_count -= 1;

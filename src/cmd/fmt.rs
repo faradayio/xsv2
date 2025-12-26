@@ -1,8 +1,8 @@
 use csv;
 
-use crate::CliResult;
 use crate::config::{Config, Delimiter};
 use crate::util;
+use crate::CliResult;
 
 static USAGE: &str = "
 Formats CSV data with a custom delimiter or CRLF line endings.
@@ -68,7 +68,6 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         wconfig = wconfig.escape(Some(escape.as_byte())).double_quote(false);
     }
     wconfig = wconfig.quote(args.flag_quote.as_byte());
-
 
     let mut rdr = rconfig.reader()?;
     let mut wtr = wconfig.writer()?;
