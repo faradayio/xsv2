@@ -7,7 +7,7 @@ use std::str;
 use byteorder::{BigEndian, WriteBytesExt};
 use csv;
 
-use crate::config::{Config, Delimiter};
+use crate::config::{CompressionFormat, Config, Delimiter};
 use crate::index::Indexed;
 use crate::select::{SelectColumns, Selection};
 use crate::util;
@@ -68,6 +68,8 @@ Common options:
                            sliced, etc.)
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 type ByteString = Vec<u8>;
@@ -87,6 +89,7 @@ struct Args {
     flag_no_case: bool,
     flag_nulls: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -284,7 +287,7 @@ impl Args {
         let mut rdr2 = rconf2.reader_file()?;
         let (sel1, sel2) = self.get_selections(&rconf1, &mut rdr1, &rconf2, &mut rdr2)?;
         Ok(IoState {
-            wtr: Config::new(&self.flag_output).writer()?,
+            wtr: Config::new(&self.flag_output).compress(self.flag_compress).writer()?,
             rdr1,
             sel1,
             rdr2,

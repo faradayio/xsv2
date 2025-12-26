@@ -6,7 +6,7 @@ use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::{self, Rng, SeedableRng};
 
-use crate::config::{Config, Delimiter};
+use crate::config::{CompressionFormat, Config, Delimiter};
 use crate::index::Indexed;
 use crate::util;
 use crate::CliResult;
@@ -42,6 +42,8 @@ Common options:
                            in the output.)
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -52,6 +54,7 @@ struct Args {
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
     flag_seed: Option<usize>,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -61,7 +64,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .no_headers(args.flag_no_headers);
     let sample_size = args.arg_sample_size;
 
-    let mut wtr = Config::new(&args.flag_output).writer()?;
+    let mut wtr = Config::new(&args.flag_output).compress(args.flag_compress).writer()?;
     let sampled = match rconfig.indexed()? {
         Some(mut idx) => {
             if do_random_access(sample_size, idx.count()) {

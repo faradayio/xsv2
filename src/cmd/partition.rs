@@ -7,7 +7,7 @@ use std::path::Path;
 use csv;
 use regex::Regex;
 
-use crate::config::{Config, Delimiter};
+use crate::config::{CompressionFormat, Config, Delimiter};
 use crate::select::SelectColumns;
 use crate::util::{self, FilenameTemplate};
 use crate::CliResult;
@@ -40,6 +40,8 @@ Common options:
                            appear in all chunks as the header row.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Clone, Deserialize)]
@@ -52,6 +54,7 @@ struct Args {
     flag_drop: bool,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -90,7 +93,7 @@ impl Args {
         let mut rdr = rconfig.reader()?;
         let headers = rdr.byte_headers()?.clone();
         let key_col = self.key_column(&rconfig, &headers)?;
-        let mut gen = WriterGenerator::new(self.flag_filename.clone());
+        let mut gen = WriterGenerator::new(self.flag_filename.clone(), self.flag_compress);
 
         let mut writers: HashMap<Vec<u8>, BoxedWriter> = HashMap::new();
         let mut row = csv::ByteRecord::new();
@@ -145,15 +148,17 @@ struct WriterGenerator {
     counter: usize,
     used: HashSet<String>,
     non_word_char: Regex,
+    compress: Option<CompressionFormat>,
 }
 
 impl WriterGenerator {
-    fn new(template: FilenameTemplate) -> WriterGenerator {
+    fn new(template: FilenameTemplate, compress: Option<CompressionFormat>) -> WriterGenerator {
         WriterGenerator {
             template,
             counter: 1,
             used: HashSet::new(),
             non_word_char: Regex::new(r"\W").unwrap(),
+            compress,
         }
     }
 
@@ -163,7 +168,7 @@ impl WriterGenerator {
         P: AsRef<Path>,
     {
         let unique_value = self.unique_value(key);
-        self.template.writer(path.as_ref(), &unique_value)
+        self.template.writer_with_compress(path.as_ref(), &unique_value, self.compress)
     }
 
     /// Generate a unique value for `key`, suitable for use in a

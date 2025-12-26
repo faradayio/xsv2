@@ -1,4 +1,4 @@
-use crate::config::{Config, Delimiter};
+use crate::config::{CompressionFormat, Config, Delimiter};
 use crate::util;
 use crate::CliResult;
 
@@ -22,6 +22,8 @@ Common options:
                            appear as the header row in the output.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -30,6 +32,7 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -43,7 +46,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut all = rdr.byte_records().collect::<Result<Vec<_>, _>>()?;
     all.reverse();
 
-    let mut wtr = Config::new(&args.flag_output).writer()?;
+    let mut wtr = Config::new(&args.flag_output).compress(args.flag_compress).writer()?;
     rconfig.write_headers(&mut rdr, &mut wtr)?;
     for r in all.into_iter() {
         wtr.write_byte_record(&r)?;

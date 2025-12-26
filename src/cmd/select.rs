@@ -1,6 +1,6 @@
 use csv;
 
-use crate::config::{Config, Delimiter};
+use crate::config::{CompressionFormat, Config, Delimiter};
 use crate::select::SelectColumns;
 use crate::util;
 use crate::CliResult;
@@ -45,6 +45,8 @@ Common options:
                            sliced, etc.)
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -54,6 +56,7 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -65,7 +68,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         .select(args.arg_selection);
 
     let mut rdr = rconfig.reader()?;
-    let mut wtr = Config::new(&args.flag_output).writer()?;
+    let mut wtr = Config::new(&args.flag_output).compress(args.flag_compress).writer()?;
 
     let headers = rdr.byte_headers()?.clone();
     let sel = rconfig.selection(&headers)?;

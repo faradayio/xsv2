@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::config::{Config, Delimiter};
+use crate::config::{CompressionFormat, Config, Delimiter};
 use crate::index::Indexed;
 use crate::util;
 use crate::CliResult;
@@ -38,6 +38,8 @@ Common options:
                            appear in the output as the header row.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -50,6 +52,7 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -105,6 +108,6 @@ impl Args {
     }
 
     fn wconfig(&self) -> Config {
-        Config::new(&self.flag_output)
+        Config::new(&self.flag_output).compress(self.flag_compress)
     }
 }

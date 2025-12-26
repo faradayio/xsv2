@@ -196,14 +196,11 @@ impl FilenameTemplate {
         format!("{}{}{}", &self.prefix, unique_value, &self.suffix)
     }
 
-    /// Create a new, writable file in directory `path` with a filename
-    /// using `unique_value` to replace the `"{}"` in the template.  Note
-    /// that we do not output headers; the caller must do that if
-    /// desired.
-    pub fn writer<P>(
+    pub fn writer_with_compress<P>(
         &self,
         path: P,
         unique_value: &str,
+        compress: Option<crate::config::CompressionFormat>,
     ) -> io::Result<csv::Writer<Box<dyn io::Write + 'static>>>
     where
         P: AsRef<Path>,
@@ -217,7 +214,7 @@ impl FilenameTemplate {
             create_dir_all_threadsafe(parent)?;
         }
         let spath = Some(full_path.display().to_string());
-        Config::new(&spath).writer()
+        Config::new(&spath).compress(compress).writer()
     }
 }
 

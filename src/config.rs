@@ -28,6 +28,29 @@ impl Delimiter {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum CompressionFormat {
+    Gzip,
+    Zstd,
+}
+
+impl<'de> Deserialize<'de> for CompressionFormat {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<CompressionFormat, D::Error> {
+        let s = String::deserialize(d)?;
+        match s.as_str() {
+            "gz" => Ok(CompressionFormat::Gzip),
+            "zstd" => Ok(CompressionFormat::Zstd),
+            _ => {
+                let msg = format!(
+                    "Invalid compression format '{}'. Valid values: gz, zstd",
+                    s
+                );
+                Err(D::Error::custom(msg))
+            }
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Delimiter {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Delimiter, D::Error> {
         let c = String::deserialize(d)?;
@@ -72,6 +95,7 @@ pub struct Config {
     double_quote: bool,
     escape: Option<u8>,
     quoting: bool,
+    compress: Option<CompressionFormat>,
 }
 
 impl Config {
@@ -110,6 +134,7 @@ impl Config {
             double_quote: true,
             escape: None,
             quoting: true,
+            compress: None,
         }
     }
 
@@ -117,6 +142,11 @@ impl Config {
         if let Some(d) = d {
             self.delimiter = d.as_byte();
         }
+        self
+    }
+
+    pub fn compress(mut self, format: Option<CompressionFormat>) -> Config {
+        self.compress = format;
         self
     }
 
@@ -296,9 +326,20 @@ impl Config {
     }
 
     pub fn io_writer(&self) -> io::Result<Box<dyn io::Write + 'static>> {
-        Ok(match self.path {
+        let writer: Box<dyn io::Write + 'static> = match self.path {
             None => Box::new(io::stdout()),
             Some(ref p) => Box::new(fs::File::create(p)?),
+        };
+
+        Ok(match self.compress {
+            Some(CompressionFormat::Gzip) => {
+                Box::new(flate2::write::GzEncoder::new(writer, flate2::Compression::default()))
+            }
+            Some(CompressionFormat::Zstd) => {
+                let encoder = zstd::stream::write::Encoder::new(writer, 3)?;
+                Box::new(encoder.auto_finish())
+            }
+            None => writer,
         })
     }
 

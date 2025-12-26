@@ -1,6 +1,6 @@
 use csv;
 
-use crate::config::{Config, Delimiter};
+use crate::config::{CompressionFormat, Config, Delimiter};
 use crate::util;
 use crate::CliResult;
 
@@ -36,6 +36,8 @@ Common options:
                            concatenating columns.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Deserialize)]
@@ -47,6 +49,7 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -68,7 +71,7 @@ impl Args {
 
     fn cat_rows(&self) -> CliResult<()> {
         let mut row = csv::ByteRecord::new();
-        let mut wtr = Config::new(&self.flag_output).writer()?;
+        let mut wtr = Config::new(&self.flag_output).compress(self.flag_compress).writer()?;
         for (i, conf) in self.configs()?.into_iter().enumerate() {
             let mut rdr = conf.reader()?;
             if i == 0 {
@@ -82,7 +85,7 @@ impl Args {
     }
 
     fn cat_columns(&self) -> CliResult<()> {
-        let mut wtr = Config::new(&self.flag_output).writer()?;
+        let mut wtr = Config::new(&self.flag_output).compress(self.flag_compress).writer()?;
         let mut rdrs = self
             .configs()?
             .into_iter()

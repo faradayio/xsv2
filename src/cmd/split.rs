@@ -6,7 +6,7 @@ use channel;
 use csv;
 use threadpool::ThreadPool;
 
-use crate::config::{Config, Delimiter};
+use crate::config::{CompressionFormat, Config, Delimiter};
 use crate::index::Indexed;
 use crate::util::{self, FilenameTemplate};
 use crate::CliResult;
@@ -44,6 +44,8 @@ Common options:
                            appear in all chunks as the header row.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -c, --compress <arg>   Compress output using the specified format.
+                           Valid values: gz, zstd
 ";
 
 #[derive(Clone, Deserialize)]
@@ -55,6 +57,7 @@ struct Args {
     flag_filename: FilenameTemplate,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_compress: Option<CompressionFormat>,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -126,7 +129,7 @@ impl Args {
         let dir = Path::new(&self.arg_outdir);
         let path = dir.join(self.flag_filename.filename(&format!("{}", start)));
         let spath = Some(path.display().to_string());
-        let mut wtr = Config::new(&spath).writer()?;
+        let mut wtr = Config::new(&spath).compress(self.flag_compress).writer()?;
         if !self.rconfig().no_headers {
             wtr.write_record(headers)?;
         }
