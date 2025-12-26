@@ -2,7 +2,10 @@
 name = "xsv"
 version = "0.13.0"  #:version
 edition = "2021"
-authors = ["Andrew Gallant <jamslam@gmail.com>"]
+authors = [
+    "Andrew Gallant <jamslam@gmail.com>",
+    "Seamus Abshere <seamus@abshere.net>",
+]
 description = "A high performance CSV command line toolkit."
 documentation = "https://burntsushi.net/rustdoc/xsv/"
 homepage = "https://github.com/BurntSushi/xsv"
