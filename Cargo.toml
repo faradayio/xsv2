@@ -35,6 +35,7 @@ csv = "1"
 csv-index = "0.1.5"
 docopt = "1"
 filetime = "0.2"
+flate2 = "1"
 num_cpus = "1.4"
 rand = "0.9"
 regex = "1"
@@ -45,5 +46,6 @@ tabwriter = "1"
 threadpool = "1.3"
 
 [dev-dependencies]
+flate2 = "1"
 quickcheck = { version = "1.0", default-features = false }
 log = "0.4"

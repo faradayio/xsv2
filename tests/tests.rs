@@ -41,6 +41,7 @@ mod test_fixlengths;
 mod test_flatten;
 mod test_fmt;
 mod test_frequency;
+mod test_gzip;
 mod test_headers;
 mod test_index;
 mod test_join;

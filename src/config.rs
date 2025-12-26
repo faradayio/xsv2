@@ -81,7 +81,14 @@ impl Config {
             Some(ref s) if s.deref() == "-" => (None, b','),
             Some(ref s) => {
                 let path = PathBuf::from(s);
-                let delim = if path.extension().is_some_and(|v| v == "tsv" || v == "tab") {
+                let delim = if path.extension().is_some_and(|v| v == "tsv" || v == "tab" || v == "gz") {
+                    let path_str = path.to_str().unwrap_or("").to_lowercase();
+                    if path_str.ends_with(".tsv.gz") || path_str.ends_with(".tab.gz") {
+                        b'\t'
+                    } else {
+                        b','
+                    }
+                } else if path.extension().is_some_and(|v| v == "tsv" || v == "tab") {
                     b'\t'
                 } else {
                     b','
@@ -259,7 +266,13 @@ impl Config {
         Ok(match self.path {
             None => Box::new(io::stdin()),
             Some(ref p) => match fs::File::open(p) {
-                Ok(x) => Box::new(x),
+                Ok(x) => {
+                    if p.extension().is_some_and(|ext| ext == "gz") {
+                        Box::new(flate2::read::GzDecoder::new(x))
+                    } else {
+                        Box::new(x)
+                    }
+                }
                 Err(err) => {
                     let msg = format!("failed to open {}: {}", p.display(), err);
                     return Err(io::Error::new(io::ErrorKind::NotFound, msg));
