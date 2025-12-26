@@ -196,11 +196,12 @@ impl FilenameTemplate {
         format!("{}{}{}", &self.prefix, unique_value, &self.suffix)
     }
 
-    pub fn writer_with_compress<P>(
+    pub fn writer_with_options<P>(
         &self,
         path: P,
         unique_value: &str,
         compress: Option<crate::config::CompressionFormat>,
+        flexible: bool,
     ) -> io::Result<csv::Writer<Box<dyn io::Write + 'static>>>
     where
         P: AsRef<Path>,
@@ -214,7 +215,10 @@ impl FilenameTemplate {
             create_dir_all_threadsafe(parent)?;
         }
         let spath = Some(full_path.display().to_string());
-        Config::new(&spath).compress(compress).writer()
+        Config::new(&spath)
+            .compress(compress)
+            .flexible(flexible)
+            .writer()
     }
 }
 

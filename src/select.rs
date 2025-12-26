@@ -367,7 +367,7 @@ impl Selection {
     ) -> iter::Scan<slice::Iter<'a, usize>, &'b csv::ByteRecord, _GetField> {
         // This is horrifying.
         fn get_field<'c>(row: &mut &'c csv::ByteRecord, idx: &usize) -> Option<&'c [u8]> {
-            Some(&row[*idx])
+            row.get(*idx)
         }
         let get_field: _GetField = get_field;
         self.iter().scan(row, get_field)

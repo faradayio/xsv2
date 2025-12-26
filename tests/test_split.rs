@@ -386,3 +386,173 @@ fn split_custom_filename() {
     assert!(wrk.path("prefix-2.csv").exists());
     assert!(wrk.path("prefix-4.csv").exists());
 }
+
+fn data_flexible(headers: bool) -> Vec<Vec<String>> {
+    let mut rows = vec![
+        svec!["a"],
+        svec!["b", "extra1"],
+        svec!["c", "extra1", "extra2"],
+        svec!["d"],
+        svec!["e", "extra1"],
+        svec!["f", "extra1", "extra2", "extra3"],
+    ];
+    if headers {
+        rows.insert(0, svec!["h1"]);
+    }
+    rows
+}
+
+#[test]
+fn split_flexible() {
+    let wrk = Workdir::new("split_flexible").flexible(true);
+    wrk.create("in.csv", data_flexible(true));
+
+    let mut cmd = wrk.command("split");
+    cmd.args(&["--size", "2", "--flexible"])
+        .arg(&wrk.path("."))
+        .arg("in.csv");
+    wrk.run(&mut cmd);
+
+    split_eq!(
+        wrk,
+        "0.csv",
+        "\
+h1
+a
+b,extra1
+"
+    );
+    split_eq!(
+        wrk,
+        "2.csv",
+        "\
+h1
+c,extra1,extra2
+d
+"
+    );
+    split_eq!(
+        wrk,
+        "4.csv",
+        "\
+h1
+e,extra1
+f,extra1,extra2,extra3
+"
+    );
+}
+
+#[test]
+fn split_flexible_idx() {
+    let wrk = Workdir::new("split_flexible_idx").flexible(true);
+    wrk.create("in.csv", data_flexible(true));
+
+    let mut cmd = wrk.command("index");
+    cmd.arg("--flexible").arg("in.csv");
+    wrk.run(&mut cmd);
+
+    let mut cmd = wrk.command("split");
+    cmd.args(&["--size", "2", "--flexible"])
+        .arg(&wrk.path("."))
+        .arg("in.csv");
+    wrk.run(&mut cmd);
+
+    split_eq!(
+        wrk,
+        "0.csv",
+        "\
+h1
+a
+b,extra1
+"
+    );
+    split_eq!(
+        wrk,
+        "2.csv",
+        "\
+h1
+c,extra1,extra2
+d
+"
+    );
+    split_eq!(
+        wrk,
+        "4.csv",
+        "\
+h1
+e,extra1
+f,extra1,extra2,extra3
+"
+    );
+}
+
+#[test]
+fn split_compress_gz() {
+    let wrk = Workdir::new("split_compress_gz");
+    wrk.create("in.csv", data(true));
+
+    let mut cmd = wrk.command("split");
+    cmd.args(&["--size", "2", "--compress", "gz"])
+        .arg(&wrk.path("."))
+        .arg("in.csv");
+    wrk.run(&mut cmd);
+
+    assert!(wrk.path("0.csv.gz").exists());
+    assert!(wrk.path("2.csv.gz").exists());
+    assert!(wrk.path("4.csv.gz").exists());
+    assert!(!wrk.path("6.csv.gz").exists());
+    assert!(!wrk.path("0.csv").exists());
+}
+
+#[test]
+fn split_compress_zstd() {
+    let wrk = Workdir::new("split_compress_zstd");
+    wrk.create("in.csv", data(true));
+
+    let mut cmd = wrk.command("split");
+    cmd.args(&["--size", "2", "--compress", "zstd"])
+        .arg(&wrk.path("."))
+        .arg("in.csv");
+    wrk.run(&mut cmd);
+
+    assert!(wrk.path("0.csv.zst").exists());
+    assert!(wrk.path("2.csv.zst").exists());
+    assert!(wrk.path("4.csv.zst").exists());
+    assert!(!wrk.path("6.csv.zst").exists());
+    assert!(!wrk.path("0.csv").exists());
+}
+
+#[test]
+fn split_compress_gz_idx() {
+    let wrk = Workdir::new("split_compress_gz_idx");
+    wrk.create_indexed("in.csv", data(true));
+
+    let mut cmd = wrk.command("split");
+    cmd.args(&["--size", "2", "--compress", "gz"])
+        .arg(&wrk.path("."))
+        .arg("in.csv");
+    wrk.run(&mut cmd);
+
+    assert!(wrk.path("0.csv.gz").exists());
+    assert!(wrk.path("2.csv.gz").exists());
+    assert!(wrk.path("4.csv.gz").exists());
+    assert!(!wrk.path("6.csv.gz").exists());
+    assert!(!wrk.path("0.csv").exists());
+}
+
+#[test]
+fn split_compress_custom_filename() {
+    let wrk = Workdir::new("split_compress_custom_filename");
+    wrk.create("in.csv", data(true));
+
+    let mut cmd = wrk.command("split");
+    cmd.args(&["--size", "2", "--compress", "gz"])
+        .args(&["--filename", "chunk-{}.csv"])
+        .arg(&wrk.path("."))
+        .arg("in.csv");
+    wrk.run(&mut cmd);
+
+    assert!(wrk.path("chunk-0.csv.gz").exists());
+    assert!(wrk.path("chunk-2.csv.gz").exists());
+    assert!(wrk.path("chunk-4.csv.gz").exists());
+}

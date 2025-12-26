@@ -19,6 +19,7 @@ Common options:
                            the count.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
 ";
 
 #[derive(Deserialize)]
@@ -26,13 +27,15 @@ struct Args {
     arg_input: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
     let conf = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
-        .no_headers(args.flag_no_headers);
+        .no_headers(args.flag_no_headers)
+        .flexible(args.flag_flexible);
 
     let count = match conf.indexed()? {
         Some(idx) => idx.count(),

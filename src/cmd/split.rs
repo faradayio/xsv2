@@ -44,6 +44,7 @@ Common options:
                            appear in all chunks as the header row.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
     -c, --compress <arg>   Compress output using the specified format.
                            Valid values: gz, zstd
 ";
@@ -57,6 +58,7 @@ struct Args {
     flag_filename: FilenameTemplate,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_compress: Option<CompressionFormat>,
 }
 
@@ -127,9 +129,25 @@ impl Args {
         start: usize,
     ) -> CliResult<csv::Writer<Box<dyn io::Write + 'static>>> {
         let dir = Path::new(&self.arg_outdir);
-        let path = dir.join(self.flag_filename.filename(&format!("{}", start)));
+        let mut path = dir.join(self.flag_filename.filename(&format!("{}", start)));
+
+        if let Some(compress_format) = self.flag_compress {
+            let extension = match compress_format {
+                CompressionFormat::Gzip => "gz",
+                CompressionFormat::Zstd => "zst",
+            };
+            let filename = path.file_name().unwrap().to_str().unwrap();
+            if !filename.ends_with(&format!(".{}", extension)) {
+                let new_filename = format!("{}.{}", filename, extension);
+                path.set_file_name(new_filename);
+            }
+        }
+
         let spath = Some(path.display().to_string());
-        let mut wtr = Config::new(&spath).compress(self.flag_compress).writer()?;
+        let mut wtr = Config::new(&spath)
+            .compress(self.flag_compress)
+            .flexible(self.flag_flexible)
+            .writer()?;
         if !self.rconfig().no_headers {
             wtr.write_record(headers)?;
         }
@@ -140,6 +158,7 @@ impl Args {
         Config::new(&self.arg_input)
             .delimiter(self.flag_delimiter)
             .no_headers(self.flag_no_headers)
+            .flexible(self.flag_flexible)
     }
 
     fn njobs(&self) -> usize {

@@ -31,6 +31,7 @@ Common options:
     -o, --output <file>    Write output to <file> instead of stdout.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
     -c, --compress <arg>   Compress output using the specified format.
                            Valid values: gz, zstd
 ";
@@ -43,6 +44,7 @@ struct Args {
     flag_ascii: bool,
     flag_output: Option<String>,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_quote: Delimiter,
     flag_quote_always: bool,
     flag_escape: Option<Delimiter>,
@@ -54,7 +56,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
-        .no_headers(true);
+        .no_headers(true)
+        .flexible(args.flag_flexible);
     let mut wconfig = Config::new(&args.flag_output)
         .delimiter(args.flag_out_delimiter)
         .crlf(args.flag_crlf)

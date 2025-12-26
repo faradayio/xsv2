@@ -83,7 +83,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     };
 
     let mut rdr = config.reader()?;
-    let mut wtr = Config::new(&args.flag_output).compress(args.flag_compress).writer()?;
+    let mut wtr = Config::new(&args.flag_output)
+        .compress(args.flag_compress)
+        .writer()?;
     for r in rdr.byte_records() {
         let mut r = r?;
         if length >= r.len() {

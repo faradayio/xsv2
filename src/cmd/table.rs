@@ -34,6 +34,7 @@ Common options:
     -o, --output <file>    Write output to <file> instead of stdout.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
 ";
 
 #[derive(Deserialize)]
@@ -43,6 +44,7 @@ struct Args {
     flag_pad: usize,
     flag_output: Option<String>,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_condense: Option<usize>,
 }
 
@@ -50,7 +52,8 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
-        .no_headers(true);
+        .no_headers(true)
+        .flexible(args.flag_flexible);
     let wconfig = Config::new(&args.flag_output).delimiter(Some(Delimiter(b'\t')));
 
     let tw = TabWriter::new(wconfig.io_writer()?)

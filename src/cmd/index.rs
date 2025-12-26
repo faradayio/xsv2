@@ -32,6 +32,7 @@ Common options:
     -h, --help             Display this message
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
 ";
 
 #[derive(Deserialize)]
@@ -39,6 +40,7 @@ struct Args {
     arg_input: String,
     flag_output: Option<String>,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -49,7 +51,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         Some(p) => PathBuf::from(&p),
     };
 
-    let rconfig = Config::new(&Some(args.arg_input)).delimiter(args.flag_delimiter);
+    let rconfig = Config::new(&Some(args.arg_input))
+        .delimiter(args.flag_delimiter)
+        .flexible(args.flag_flexible);
     let mut rdr = rconfig.reader_file()?;
     let mut wtr = io::BufWriter::new(fs::File::create(&pidx)?);
     RandomAccessSimple::create(&mut rdr, &mut wtr)?;

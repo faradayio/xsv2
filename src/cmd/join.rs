@@ -68,6 +68,7 @@ Common options:
                            sliced, etc.)
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
     -c, --compress <arg>   Compress output using the specified format.
                            Valid values: gz, zstd
 ";
@@ -89,6 +90,7 @@ struct Args {
     flag_no_case: bool,
     flag_nulls: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_compress: Option<CompressionFormat>,
 }
 
@@ -277,17 +279,21 @@ impl Args {
         let rconf1 = Config::new(&Some(self.arg_input1.clone()))
             .delimiter(self.flag_delimiter)
             .no_headers(self.flag_no_headers)
+            .flexible(self.flag_flexible)
             .select(self.arg_columns1.clone());
         let rconf2 = Config::new(&Some(self.arg_input2.clone()))
             .delimiter(self.flag_delimiter)
             .no_headers(self.flag_no_headers)
+            .flexible(self.flag_flexible)
             .select(self.arg_columns2.clone());
 
         let mut rdr1 = rconf1.reader_file()?;
         let mut rdr2 = rconf2.reader_file()?;
         let (sel1, sel2) = self.get_selections(&rconf1, &mut rdr1, &rconf2, &mut rdr2)?;
         Ok(IoState {
-            wtr: Config::new(&self.flag_output).compress(self.flag_compress).writer()?,
+            wtr: Config::new(&self.flag_output)
+                .compress(self.flag_compress)
+                .writer()?,
             rdr1,
             sel1,
             rdr2,

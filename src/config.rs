@@ -41,10 +41,7 @@ impl<'de> Deserialize<'de> for CompressionFormat {
             "gz" => Ok(CompressionFormat::Gzip),
             "zstd" => Ok(CompressionFormat::Zstd),
             _ => {
-                let msg = format!(
-                    "Invalid compression format '{}'. Valid values: gz, zstd",
-                    s
-                );
+                let msg = format!("Invalid compression format '{}'. Valid values: gz, zstd", s);
                 Err(D::Error::custom(msg))
             }
         }
@@ -105,10 +102,16 @@ impl Config {
             Some(ref s) if s.deref() == "-" => (None, b','),
             Some(ref s) => {
                 let path = PathBuf::from(s);
-                let delim = if path.extension().is_some_and(|v| v == "tsv" || v == "tab" || v == "gz" || v == "zst") {
+                let delim = if path
+                    .extension()
+                    .is_some_and(|v| v == "tsv" || v == "tab" || v == "gz" || v == "zst")
+                {
                     let path_str = path.to_str().unwrap_or("").to_lowercase();
-                    if path_str.ends_with(".tsv.gz") || path_str.ends_with(".tab.gz") 
-                        || path_str.ends_with(".tsv.zst") || path_str.ends_with(".tab.zst") {
+                    if path_str.ends_with(".tsv.gz")
+                        || path_str.ends_with(".tab.gz")
+                        || path_str.ends_with(".tsv.zst")
+                        || path_str.ends_with(".tab.zst")
+                    {
                         b'\t'
                     } else {
                         b','
@@ -256,7 +259,7 @@ impl Config {
                 return Err(io::Error::other(
                     "Cannot use <stdin> with indexes",
                     // Some(format!("index file: {}", p.display()))
-                ))
+                ));
             }
             (Some(p), &None) => {
                 // We generally don't want to report an error here, since we're
@@ -332,9 +335,10 @@ impl Config {
         };
 
         Ok(match self.compress {
-            Some(CompressionFormat::Gzip) => {
-                Box::new(flate2::write::GzEncoder::new(writer, flate2::Compression::default()))
-            }
+            Some(CompressionFormat::Gzip) => Box::new(flate2::write::GzEncoder::new(
+                writer,
+                flate2::Compression::default(),
+            )),
             Some(CompressionFormat::Zstd) => {
                 let encoder = zstd::stream::write::Encoder::new(writer, 3)?;
                 Box::new(encoder.auto_finish())

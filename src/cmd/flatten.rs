@@ -36,6 +36,7 @@ Common options:
                            will be its index.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
 ";
 
 #[derive(Deserialize)]
@@ -45,13 +46,15 @@ struct Args {
     flag_separator: String,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
-        .no_headers(args.flag_no_headers);
+        .no_headers(args.flag_no_headers)
+        .flexible(args.flag_flexible);
     let mut rdr = rconfig.reader()?;
     let headers = rdr.byte_headers()?.clone();
 

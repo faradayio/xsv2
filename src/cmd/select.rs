@@ -45,6 +45,7 @@ Common options:
                            sliced, etc.)
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
     -c, --compress <arg>   Compress output using the specified format.
                            Valid values: gz, zstd
 ";
@@ -56,6 +57,7 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_compress: Option<CompressionFormat>,
 }
 
@@ -65,20 +67,24 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
         .no_headers(args.flag_no_headers)
+        .flexible(args.flag_flexible)
         .select(args.arg_selection);
 
     let mut rdr = rconfig.reader()?;
-    let mut wtr = Config::new(&args.flag_output).compress(args.flag_compress).writer()?;
+    let mut wtr = Config::new(&args.flag_output)
+        .compress(args.flag_compress)
+        .flexible(args.flag_flexible)
+        .writer()?;
 
     let headers = rdr.byte_headers()?.clone();
     let sel = rconfig.selection(&headers)?;
 
     if !rconfig.no_headers {
-        wtr.write_record(sel.iter().map(|&i| &headers[i]))?;
+        wtr.write_record(sel.iter().map(|&i| headers.get(i).unwrap_or(b"")))?;
     }
     let mut record = csv::ByteRecord::new();
     while rdr.read_byte_record(&mut record)? {
-        wtr.write_record(sel.iter().map(|&i| &record[i]))?;
+        wtr.write_record(sel.iter().map(|&i| record.get(i).unwrap_or(b"")))?;
     }
     wtr.flush()?;
     Ok(())

@@ -36,6 +36,7 @@ Common options:
                            concatenating columns.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
     -c, --compress <arg>   Compress output using the specified format.
                            Valid values: gz, zstd
 ";
@@ -49,6 +50,7 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_compress: Option<CompressionFormat>,
 }
 
@@ -65,13 +67,19 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
 impl Args {
     fn configs(&self) -> CliResult<Vec<Config>> {
-        util::many_configs(&self.arg_input, self.flag_delimiter, self.flag_no_headers)
-            .map_err(From::from)
+        let configs =
+            util::many_configs(&self.arg_input, self.flag_delimiter, self.flag_no_headers)?
+                .into_iter()
+                .map(|conf| conf.flexible(self.flag_flexible))
+                .collect::<Vec<_>>();
+        Ok(configs)
     }
 
     fn cat_rows(&self) -> CliResult<()> {
         let mut row = csv::ByteRecord::new();
-        let mut wtr = Config::new(&self.flag_output).compress(self.flag_compress).writer()?;
+        let mut wtr = Config::new(&self.flag_output)
+            .compress(self.flag_compress)
+            .writer()?;
         for (i, conf) in self.configs()?.into_iter().enumerate() {
             let mut rdr = conf.reader()?;
             if i == 0 {
@@ -85,7 +93,9 @@ impl Args {
     }
 
     fn cat_columns(&self) -> CliResult<()> {
-        let mut wtr = Config::new(&self.flag_output).compress(self.flag_compress).writer()?;
+        let mut wtr = Config::new(&self.flag_output)
+            .compress(self.flag_compress)
+            .writer()?;
         let mut rdrs = self
             .configs()?
             .into_iter()

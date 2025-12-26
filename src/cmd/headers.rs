@@ -29,6 +29,7 @@ Common options:
     -h, --help             Display this message
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
 ";
 
 #[derive(Deserialize)]
@@ -37,11 +38,15 @@ struct Args {
     flag_just_names: bool,
     flag_intersect: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
     let args: Args = util::get_args(USAGE, argv)?;
-    let configs = util::many_configs(&args.arg_input, args.flag_delimiter, true)?;
+    let configs = util::many_configs(&args.arg_input, args.flag_delimiter, true)?
+        .into_iter()
+        .map(|conf| conf.flexible(args.flag_flexible))
+        .collect::<Vec<_>>();
 
     let num_inputs = configs.len();
     let mut headers: Vec<Vec<u8>> = vec![];

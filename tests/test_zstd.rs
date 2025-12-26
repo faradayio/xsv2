@@ -179,13 +179,13 @@ fn compress_fixlengths_zstd() {
     let wrk = Workdir::new("compress_fixlengths_zstd");
     let csv_data = "a,b\n1\n2,3,4\n";
     std::fs::write(wrk.path("data.csv"), csv_data).unwrap();
-    
+
     let mut cmd = wrk.command("fixlengths");
     cmd.arg("--compress").arg("zstd");
     cmd.arg("--output").arg("out.csv.zst");
     cmd.arg("data.csv");
     wrk.run(&mut cmd);
-    
+
     // Verify output is compressed and readable with proper fixed lengths
     let mut cmd2 = wrk.command("select");
     cmd2.arg("1-").arg("out.csv.zst");
@@ -199,14 +199,17 @@ fn compress_fixlengths_zstd() {
 #[test]
 fn compress_split_zstd() {
     let wrk = Workdir::new("compress_split_zstd");
-    wrk.create("data.csv", vec![
-        svec!["name", "age"],
-        svec!["Alice", "30"],
-        svec!["Bob", "25"],
-        svec!["Charlie", "35"],
-        svec!["Diana", "28"],
-    ]);
-    
+    wrk.create(
+        "data.csv",
+        vec![
+            svec!["name", "age"],
+            svec!["Alice", "30"],
+            svec!["Bob", "25"],
+            svec!["Charlie", "35"],
+            svec!["Diana", "28"],
+        ],
+    );
+
     let mut cmd = wrk.command("split");
     cmd.arg("--compress").arg("zstd");
     cmd.arg("--size").arg("2");
@@ -214,13 +217,13 @@ fn compress_split_zstd() {
     cmd.arg("outdir");
     cmd.arg("data.csv");
     wrk.run(&mut cmd);
-    
+
     // Verify the split files are compressed and readable
     let mut cmd2 = wrk.command("count");
     cmd2.arg("outdir/0.csv.zst");
     let count1: usize = wrk.stdout(&mut cmd2);
     assert_eq!(count1, 2);
-    
+
     let mut cmd3 = wrk.command("count");
     cmd3.arg("outdir/2.csv.zst");
     let count2: usize = wrk.stdout(&mut cmd3);

@@ -40,6 +40,7 @@ Common options:
                            appear in all chunks as the header row.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
     -c, --compress <arg>   Compress output using the specified format.
                            Valid values: gz, zstd
 ";
@@ -54,6 +55,7 @@ struct Args {
     flag_drop: bool,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_compress: Option<CompressionFormat>,
 }
 
@@ -74,6 +76,7 @@ impl Args {
         Config::new(&self.arg_input)
             .delimiter(self.flag_delimiter)
             .no_headers(self.flag_no_headers)
+            .flexible(self.flag_flexible)
             .select(self.arg_column.clone())
     }
 
@@ -93,13 +96,20 @@ impl Args {
         let mut rdr = rconfig.reader()?;
         let headers = rdr.byte_headers()?.clone();
         let key_col = self.key_column(&rconfig, &headers)?;
-        let mut gen = WriterGenerator::new(self.flag_filename.clone(), self.flag_compress);
+        let mut gen = WriterGenerator::new(
+            self.flag_filename.clone(),
+            self.flag_compress,
+            self.flag_flexible,
+        );
 
         let mut writers: HashMap<Vec<u8>, BoxedWriter> = HashMap::new();
         let mut row = csv::ByteRecord::new();
         while rdr.read_byte_record(&mut row)? {
             // Decide what file to put this in.
-            let column = &row[key_col];
+            let column = match row.get(key_col) {
+                Some(col) => col,
+                None => b"",
+            };
             let key = match self.flag_prefix_length {
                 // We exceed --prefix-length, so ignore the extra bytes.
                 Some(len) if len < column.len() => &column[0..len],
@@ -149,16 +159,22 @@ struct WriterGenerator {
     used: HashSet<String>,
     non_word_char: Regex,
     compress: Option<CompressionFormat>,
+    flexible: bool,
 }
 
 impl WriterGenerator {
-    fn new(template: FilenameTemplate, compress: Option<CompressionFormat>) -> WriterGenerator {
+    fn new(
+        template: FilenameTemplate,
+        compress: Option<CompressionFormat>,
+        flexible: bool,
+    ) -> WriterGenerator {
         WriterGenerator {
             template,
             counter: 1,
             used: HashSet::new(),
             non_word_char: Regex::new(r"\W").unwrap(),
             compress,
+            flexible,
         }
     }
 
@@ -168,7 +184,12 @@ impl WriterGenerator {
         P: AsRef<Path>,
     {
         let unique_value = self.unique_value(key);
-        self.template.writer_with_compress(path.as_ref(), &unique_value, self.compress)
+        self.template.writer_with_options(
+            path.as_ref(),
+            &unique_value,
+            self.compress,
+            self.flexible,
+        )
     }
 
     /// Generate a unique value for `key`, suitable for use in a

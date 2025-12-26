@@ -31,6 +31,7 @@ Common options:
                            appear as the header row in the output.
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
+    -F, --flexible         Allow records with variable field counts
     -c, --compress <arg>   Compress output using the specified format.
                            Valid values: gz, zstd
 ";
@@ -44,6 +45,7 @@ struct Args {
     flag_output: Option<String>,
     flag_no_headers: bool,
     flag_delimiter: Option<Delimiter>,
+    flag_flexible: bool,
     flag_compress: Option<CompressionFormat>,
 }
 
@@ -54,6 +56,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let rconfig = Config::new(&args.arg_input)
         .delimiter(args.flag_delimiter)
         .no_headers(args.flag_no_headers)
+        .flexible(args.flag_flexible)
         .select(args.flag_select);
 
     let mut rdr = rconfig.reader()?;
@@ -85,7 +88,9 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         }),
     }
 
-    let mut wtr = Config::new(&args.flag_output).compress(args.flag_compress).writer()?;
+    let mut wtr = Config::new(&args.flag_output)
+        .compress(args.flag_compress)
+        .writer()?;
     rconfig.write_headers(&mut rdr, &mut wtr)?;
     for r in all.into_iter() {
         wtr.write_byte_record(&r)?;
