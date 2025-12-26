@@ -81,9 +81,10 @@ impl Config {
             Some(ref s) if s.deref() == "-" => (None, b','),
             Some(ref s) => {
                 let path = PathBuf::from(s);
-                let delim = if path.extension().is_some_and(|v| v == "tsv" || v == "tab" || v == "gz") {
+                let delim = if path.extension().is_some_and(|v| v == "tsv" || v == "tab" || v == "gz" || v == "zst") {
                     let path_str = path.to_str().unwrap_or("").to_lowercase();
-                    if path_str.ends_with(".tsv.gz") || path_str.ends_with(".tab.gz") {
+                    if path_str.ends_with(".tsv.gz") || path_str.ends_with(".tab.gz") 
+                        || path_str.ends_with(".tsv.zst") || path_str.ends_with(".tab.zst") {
                         b'\t'
                     } else {
                         b','
@@ -269,6 +270,8 @@ impl Config {
                 Ok(x) => {
                     if p.extension().is_some_and(|ext| ext == "gz") {
                         Box::new(flate2::read::GzDecoder::new(x))
+                    } else if p.extension().is_some_and(|ext| ext == "zst") {
+                        Box::new(zstd::stream::read::Decoder::new(x)?)
                     } else {
                         Box::new(x)
                     }

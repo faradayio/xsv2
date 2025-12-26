@@ -54,6 +54,7 @@ mod test_sort;
 mod test_split;
 mod test_stats;
 mod test_table;
+mod test_zstd;
 
 fn qcheck<T: Testable>(p: T) {
     QuickCheck::new().gen(Gen::new(5)).quickcheck(p);
