@@ -21,7 +21,7 @@ sliced. Without an index, all rows up to the first row in the slice must be
 parsed.
 
 Usage:
-    xsv slice [options] [<input>]
+    xsv2 slice [options] [<input>]
 
 slice options:
     -s, --start <arg>      The index of the record to slice from.

@@ -15,8 +15,8 @@ with the '--select' flag (but the full row is still written to the output if
 there is a match).
 
 Usage:
-    xsv search [options] <regex> [<input>]
-    xsv search --help
+    xsv2 search [options] <regex> [<input>]
+    xsv2 search --help
 
 search options:
     -i, --ignore-case      Case insensitive search. This is equivalent to

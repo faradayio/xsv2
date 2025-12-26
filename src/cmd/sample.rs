@@ -27,8 +27,8 @@ limit the number of records visited, use the 'xsv slice' command to pipe into
 'xsv sample'.
 
 Usage:
-    xsv sample [options] <sample-size> [<input>]
-    xsv sample --help
+    xsv2 sample [options] <sample-size> [<input>]
+    xsv2 sample --help
 
 sample options:
     --seed <number>        RNG seed.

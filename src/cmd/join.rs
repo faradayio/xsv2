@@ -30,8 +30,8 @@ columns1 and columns2 must specify exactly the same number of columns.
 (See 'xsv select --help' for the full syntax.)
 
 Usage:
-    xsv join [options] <columns1> <input1> <columns2> <input2>
-    xsv join --help
+    xsv2 join [options] <columns1> <input1> <columns2> <input2>
+    xsv2 join --help
 
 join options:
     --no-case              When set, joins are done case insensitively.

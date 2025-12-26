@@ -14,7 +14,7 @@ Sorts CSV data lexicographically.
 Note that this requires reading all of the CSV data into memory.
 
 Usage:
-    xsv sort [options] [<input>]
+    xsv2 sort [options] [<input>]
 
 sort options:
     -s, --select <arg>     Select a subset of columns to sort.

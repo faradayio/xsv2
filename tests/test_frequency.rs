@@ -126,7 +126,7 @@ fn frequency_select() {
     assert_eq!(got, expected);
 }
 
-// This tests that a frequency table computed by `xsv` is always the same
+// This tests that a frequency table computed by `xsv2` is always the same
 // as the frequency table computed in memory.
 #[test]
 fn prop_frequency() {
@@ -158,7 +158,7 @@ fn frequency_bom() {
     assert!(param_prop_frequency("prop_frequency", rows, false))
 }
 
-// This tests that a frequency table computed by `xsv` (with an index) is
+// This tests that a frequency table computed by `xsv2` (with an index) is
 // always the same as the frequency table computed in memory.
 #[test]
 fn prop_frequency_indexed() {

@@ -1,7 +1,7 @@
 use crate::workdir::Workdir;
 use {crate::qcheck, crate::CsvData};
 
-/// This tests whether `xsv count` gets the right answer.
+/// This tests whether `xsv2 count` gets the right answer.
 ///
 /// It does some simple case analysis to handle whether we want to test counts
 /// in the presence of headers and/or indexes.

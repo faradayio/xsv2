@@ -34,8 +34,8 @@ more indexing). Finally, column ranges can be specified.
   $ xsv select '\"Date - Opening\",\"Date - Actual Closing\"'
 
 Usage:
-    xsv select [options] [--] <selection> [<input>]
-    xsv select --help
+    xsv2 select [options] [--] <selection> [<input>]
+    xsv2 select --help
 
 Common options:
     -h, --help             Display this message

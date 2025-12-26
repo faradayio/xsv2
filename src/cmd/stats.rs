@@ -31,7 +31,7 @@ Computing statistics on a large file can be made much faster if you create
 an index for it first with 'xsv index'.
 
 Usage:
-    xsv stats [options] [<input>]
+    xsv2 stats [options] [<input>]
 
 stats options:
     -s, --select <arg>     Select a subset of columns to compute stats for.

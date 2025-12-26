@@ -27,7 +27,7 @@ Since this computes an exact frequency table, memory proportional to the
 cardinality of each column is required.
 
 Usage:
-    xsv frequency [options] [<input>]
+    xsv2 frequency [options] [<input>]
 
 frequency options:
     -s, --select <arg>     Select a subset of columns to compute frequencies

@@ -1,5 +1,5 @@
 [package]
-name = "xsv"
+name = "xsv2"
 version = "0.14.0-pre1"  #:version
 edition = "2021"
 authors = [
@@ -7,7 +7,7 @@ authors = [
     "Seamus Abshere <seamus@abshere.net>",
 ]
 description = "A high performance CSV command line toolkit."
-documentation = "https://docs.rs/xsv"
+documentation = "https://docs.rs/xsv2"
 homepage = "https://github.com/faradayio/xsv2"
 repository = "https://github.com/faradayio/xsv2"
 readme = "README.md"
@@ -17,6 +17,7 @@ autotests = false
 
 [[bin]]
 name = "xsv2"
+path = "src/main.rs"
 test = false
 bench = false
 doctest = false

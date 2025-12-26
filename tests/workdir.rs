@@ -161,7 +161,7 @@ impl Workdir {
     }
 
     pub fn xsv_bin(&self) -> PathBuf {
-        self.root.join("xsv")
+        self.root.join("xsv2")
     }
 }
 
@@ -171,7 +171,7 @@ impl fmt::Debug for Workdir {
     }
 }
 
-// For whatever reason, `fs::create_dir_all` fails intermittently on Travis
+// For whatever reason, `fs::create_dir_all` fails intermittently in CI
 // with a weird "file exists" error. Despite my best efforts to get to the
 // bottom of it, I've decided a try-wait-and-retry hack is good enough.
 fn create_dir_all<P: AsRef<Path>>(p: P) -> io::Result<()> {

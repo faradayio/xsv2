@@ -79,8 +79,8 @@ mod util;
 static USAGE: &str = concat!(
     "
 Usage:
-    xsv <command> [<args>...]
-    xsv [options]
+    xsv2 <command> [<args>...]
+    xsv2 [options]
 
 Options:
     --list        List all commands available.
@@ -113,7 +113,7 @@ fn main() {
     match args.arg_command {
         None => {
             werr!(concat!(
-                "xsv is a suite of CSV command line utilities.
+                "xsv2 is a suite of CSV command line utilities.
 
 Please choose one of the following commands:",
                 command_list!()
@@ -177,7 +177,7 @@ impl Command {
         if !argv[1].chars().all(char::is_lowercase) {
             return Err(CliError::Other(
                 format!(
-                    "xsv expects commands in lowercase. Did you mean '{}'?",
+                    "xsv2 expects commands in lowercase. Did you mean '{}'?",
                     argv[1].to_lowercase()
                 )
                 .to_string(),
