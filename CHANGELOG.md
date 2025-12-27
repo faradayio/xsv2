@@ -23,10 +23,10 @@ xsv2 is a modernized fork of the original [xsv](https://github.com/BurntSushi/xs
   - New `--compress` flag available on all commands that write output: `cat`, `fixlengths`, `fmt`, `frequency`, `input`, `join`, `partition`, `reverse`, `sample`, `search`, `select`, `slice`, `sort`, `split`, `stats`
   - Automatic detection of compressed input files based on file extension
 
-- **Flexible CSV Parsing**: Added `--flexible` flag to allow CSV files with varying number of fields per record.
+- **Flexible CSV Parsing**: Added `--flexible` flag to allow CSV files with varying number of fields per record (jagged rows).
 
   - Available on all commands that read CSV input
-  - Useful for working with malformed or inconsistent CSV files
+  - It's the equivalent of passing things through `fixlengths`, except that it also returns jagged rows.
 
 - **GitHub Actions CI/CD**: Added automated workflows
   - CI workflow for testing on Linux, macOS, and Windows
