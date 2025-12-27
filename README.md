@@ -4,6 +4,8 @@ xsv2 is an actively maintained fork of the original [xsv](https://github.com/Bur
 
 xsv2 is sponsored by [Faraday](https://faraday.ai/), a B2C data company.
 
+Also see [csv-tools](https://github.com/faradayio/csv-tools), including `scrubcsv`, `fixed2csv`, `hashcsv` (adds the hash of the row as a column).
+
 ---
 
 xsv is a command line program for indexing, slicing, analyzing, splitting
