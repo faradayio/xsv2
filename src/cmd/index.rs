@@ -18,6 +18,9 @@ automatically used by commands that can benefit from it. If the original CSV
 data changes after the index is made, commands that try to use it will result
 in an error (you have to regenerate the index before it can be used again).
 
+Indexes are not compatible with flexible mode (--flexible). Commands that
+use --flexible will ignore any existing index.
+
 Usage:
     xsv2 index [options] <input>
     xsv2 index --help
@@ -32,7 +35,6 @@ Common options:
     -h, --help             Display this message
     -d, --delimiter <arg>  The field delimiter for reading CSV data.
                            Must be a single character. (default: ,)
-    -F, --flexible         Allow records with variable field counts
 ";
 
 #[derive(Deserialize)]
@@ -40,7 +42,6 @@ struct Args {
     arg_input: String,
     flag_output: Option<String>,
     flag_delimiter: Option<Delimiter>,
-    flag_flexible: bool,
 }
 
 pub fn run(argv: &[&str]) -> CliResult<()> {
@@ -51,9 +52,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
         Some(p) => PathBuf::from(&p),
     };
 
-    let rconfig = Config::new(&Some(args.arg_input))
-        .delimiter(args.flag_delimiter)
-        .flexible(args.flag_flexible);
+    let rconfig = Config::new(&Some(args.arg_input)).delimiter(args.flag_delimiter);
     let mut rdr = rconfig.reader_file()?;
     let mut wtr = io::BufWriter::new(fs::File::create(&pidx)?);
     RandomAccessSimple::create(&mut rdr, &mut wtr)?;

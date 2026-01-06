@@ -111,6 +111,8 @@ impl Args {
     }
 
     fn wconfig(&self) -> Config {
-        Config::new(&self.flag_output).compress(self.flag_compress)
+        Config::new(&self.flag_output)
+            .compress(self.flag_compress)
+            .flexible(self.flag_flexible)
     }
 }

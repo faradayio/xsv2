@@ -79,6 +79,7 @@ impl Args {
         let mut row = csv::ByteRecord::new();
         let mut wtr = Config::new(&self.flag_output)
             .compress(self.flag_compress)
+            .flexible(self.flag_flexible)
             .writer()?;
         for (i, conf) in self.configs()?.into_iter().enumerate() {
             let mut rdr = conf.reader()?;
@@ -95,6 +96,7 @@ impl Args {
     fn cat_columns(&self) -> CliResult<()> {
         let mut wtr = Config::new(&self.flag_output)
             .compress(self.flag_compress)
+            .flexible(self.flag_flexible)
             .writer()?;
         let mut rdrs = self
             .configs()?

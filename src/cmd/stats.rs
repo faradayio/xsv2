@@ -90,6 +90,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     let mut wtr = Config::new(&args.flag_output)
         .compress(args.flag_compress)
+        .flexible(args.flag_flexible)
         .writer()?;
     let (headers, stats) = match args.rconfig().indexed()? {
         None => args.sequential_stats(),

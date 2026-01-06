@@ -443,22 +443,31 @@ f,extra1,extra2,extra3
 }
 
 #[test]
-fn split_flexible_idx() {
-    let wrk = Workdir::new("split_flexible_idx").flexible(true);
-    wrk.create("in.csv", data_flexible(true));
+fn split_flexible_ignores_existing_index() {
+    let wrk = Workdir::new("split_flexible_ignores_idx");
 
-    let mut cmd = wrk.command("index");
-    cmd.arg("--flexible").arg("in.csv");
-    wrk.run(&mut cmd);
+    let regular_data = vec![
+        svec!["h1"],
+        svec!["a"],
+        svec!["b"],
+        svec!["c"],
+        svec!["d"],
+        svec!["e"],
+        svec!["f"],
+    ];
+    wrk.create_indexed("in.csv", regular_data);
 
-    let mut cmd = wrk.command("split");
+    let wrk_flex = wrk.flexible(true);
+    wrk_flex.create("in.csv", data_flexible(true));
+
+    let mut cmd = wrk_flex.command("split");
     cmd.args(&["--size", "2", "--flexible"])
-        .arg(&wrk.path("."))
+        .arg(&wrk_flex.path("."))
         .arg("in.csv");
-    wrk.run(&mut cmd);
+    wrk_flex.run(&mut cmd);
 
     split_eq!(
-        wrk,
+        wrk_flex,
         "0.csv",
         "\
 h1
@@ -467,7 +476,7 @@ b,extra1
 "
     );
     split_eq!(
-        wrk,
+        wrk_flex,
         "2.csv",
         "\
 h1
@@ -476,7 +485,7 @@ d
 "
     );
     split_eq!(
-        wrk,
+        wrk_flex,
         "4.csv",
         "\
 h1

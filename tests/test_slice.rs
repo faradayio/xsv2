@@ -150,3 +150,31 @@ fn slice_index_withindex() {
 fn slice_index_no_headers_withindex() {
     test_index("slice_index_no_headers_withindex", 1, "b", false, true);
 }
+
+#[test]
+fn slice_flexible_ignores_existing_index() {
+    let wrk = Workdir::new("slice_flexible_ignores_index");
+
+    let regular_data = vec![svec!["h1"], svec!["a"], svec!["b"], svec!["c"], svec!["d"]];
+    wrk.create_indexed("in.csv", regular_data);
+
+    let wrk_flex = wrk.flexible(true);
+    let flexible_data = vec![
+        svec!["h1"],
+        svec!["a"],
+        svec!["b", "extra1"],
+        svec!["c", "extra1", "extra2"],
+        svec!["d"],
+    ];
+    wrk_flex.create("in.csv", flexible_data);
+
+    let mut cmd = wrk_flex.command("slice");
+    cmd.args(&["--start", "1", "--end", "3", "--flexible"])
+        .arg("in.csv");
+
+    let stdout: String = wrk_flex.stdout(&mut cmd);
+    let expected = "h1\n\
+         b,extra1\n\
+         c,extra1,extra2";
+    assert_eq!(stdout, expected);
+}

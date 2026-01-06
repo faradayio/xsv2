@@ -66,6 +66,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
     let mut rdr = rconfig.reader()?;
     let mut wtr = Config::new(&args.flag_output)
         .compress(args.flag_compress)
+        .flexible(args.flag_flexible)
         .writer()?;
 
     let headers = rdr.byte_headers()?.clone();

@@ -8,6 +8,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 use crate::index::Indexed;
+use encoding_rs_io::DecodeReaderBytesBuilder;
 use serde::de::{Deserialize, Deserializer, Error};
 
 use crate::select::{SelectColumns, Selection};
@@ -290,6 +291,9 @@ impl Config {
     }
 
     pub fn indexed(&self) -> CliResult<Option<Indexed<fs::File, fs::File>>> {
+        if self.flexible {
+            return Ok(None);
+        }
         match self.index_files()? {
             None => Ok(None),
             Some((r, i)) => Ok(Some(Indexed::open(r, i)?)),
@@ -297,7 +301,7 @@ impl Config {
     }
 
     pub fn io_reader(&self) -> io::Result<Box<dyn io::Read + 'static>> {
-        Ok(match self.path {
+        let reader: Box<dyn io::Read + 'static> = match self.path {
             None => Box::new(io::stdin()),
             Some(ref p) => match fs::File::open(p) {
                 Ok(x) => {
@@ -314,7 +318,9 @@ impl Config {
                     return Err(io::Error::new(io::ErrorKind::NotFound, msg));
                 }
             },
-        })
+        };
+
+        Ok(Box::new(DecodeReaderBytesBuilder::new().build(reader)))
     }
 
     pub fn build_reader<R: Read>(&self, rdr: R) -> csv::Reader<R> {

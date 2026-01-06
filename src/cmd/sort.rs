@@ -90,6 +90,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     let mut wtr = Config::new(&args.flag_output)
         .compress(args.flag_compress)
+        .flexible(args.flag_flexible)
         .writer()?;
     rconfig.write_headers(&mut rdr, &mut wtr)?;
     for r in all.into_iter() {

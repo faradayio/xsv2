@@ -1,7 +1,7 @@
 use std::env;
 use std::fmt;
 use std::fs;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process;
 use std::str::FromStr;
@@ -154,6 +154,39 @@ impl Workdir {
             .read_to_string(&mut o)
             .unwrap();
         o.parse().ok().expect("fromstr")
+    }
+
+    pub fn create_with_encoding<T: Csv>(&self, name: &str, rows: T, encoding: &str) {
+        let mut utf8_data = Vec::new();
+        {
+            let mut wtr = csv::WriterBuilder::new()
+                .flexible(self.flexible)
+                .from_writer(&mut utf8_data);
+            for row in rows.to_vecs().into_iter() {
+                wtr.write_record(row).unwrap();
+            }
+            wtr.flush().unwrap();
+        }
+
+        let file_path = self.path(name);
+        let mut file = fs::File::create(&file_path).unwrap();
+
+        match encoding {
+            "utf-16le" => {
+                file.write_all(&[0xFF, 0xFE]).unwrap();
+                for byte in utf8_data.iter() {
+                    file.write_all(&[*byte, 0x00]).unwrap();
+                }
+            }
+            "utf-16be" => {
+                file.write_all(&[0xFE, 0xFF]).unwrap();
+                for byte in utf8_data.iter() {
+                    file.write_all(&[0x00, *byte]).unwrap();
+                }
+            }
+            _ => panic!("Unsupported encoding: {}", encoding),
+        }
+        file.flush().unwrap();
     }
 
     pub fn path(&self, name: &str) -> PathBuf {

@@ -6,7 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-Nothing so far!
+## [0.14.1] - 2026-01-06
+
+### Added
+
+- **Automatic Encoding Detection**: Added support for automatic detection and conversion of different text encodings
+  - UTF-16 LE (Little Endian) and UTF-16 BE (Big Endian) are now automatically detected and converted to UTF-8
+  - Other encodings supported by the `encoding_rs` library are also handled
+  - All commands now work consistently with UTF-16 encoded CSV files
+  - Fixes the issue where `headers` and `select` commands had inconsistent behavior with UTF-16 files
+  - Streaming implementation ensures minimal memory usage regardless of file size (tested with 2GB+ files)
+  - New dependency: `encoding_rs_io` for streaming encoding detection and conversion
+
+### Fixed
+
+- Fixed inconsistency where `headers` command could display UTF-16 files but `select` command would fail with "Selector name does not exist" error
+- **Index and Flexible Mode Incompatibility**: Indexes are now incompatible with flexible mode to prevent data corruption
+  - The `index` command no longer accepts the `--flexible` flag
+  - When `--flexible` is used on any command, any existing index will be automatically ignored
+  - This prevents data corruption that could occur when using flexible parsing with byte-offset indexes
 
 ## [0.14.0] - 2025-12-26
 

@@ -84,6 +84,7 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
     let mut wtr = Config::new(&args.flag_output)
         .compress(args.flag_compress)
+        .flexible(args.flag_flexible)
         .writer()?;
     let (headers, tables) = match args.rconfig().indexed()? {
         Some(ref mut idx) if args.njobs() > 1 => args.parallel_ftables(idx),

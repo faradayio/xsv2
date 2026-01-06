@@ -293,6 +293,7 @@ impl Args {
         Ok(IoState {
             wtr: Config::new(&self.flag_output)
                 .compress(self.flag_compress)
+                .flexible(self.flag_flexible)
                 .writer()?,
             rdr1,
             sel1,
